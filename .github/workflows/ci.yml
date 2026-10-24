@@ -1,0 +1,87 @@
+name: OTP Platform CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-and-integration:
+    name: Backend Unit, Mock & Postgres Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: otp
+          POSTGRES_PASSWORD: otp_secret_password
+          POSTGRES_DB: otp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend-go/go.mod
+
+      - name: Apply PostgreSQL baseline schema and seed data
+        env:
+          PGPASSWORD: otp_secret_password
+        run: |
+          psql -h 127.0.0.1 -U otp -d otp -f backend-go/db/migrations/000001_baseline.up.sql
+          python3 tools/mysql2pg/load_data.py
+
+      - name: Run Backend Unit Tests
+        working-directory: backend-go
+        run: go test -v -race ./internal/domain/... ./internal/app/... ./internal/adapter/out/keycloak/... ./internal/config/...
+
+      - name: Run Backend API Tests with Mocks
+        working-directory: backend-go
+        run: go test -v -race -run "TestServer_|TestAPIMock_" ./internal/adapter/in/http/...
+
+      - name: Run Backend API Integration Tests (Real PostgreSQL)
+        working-directory: backend-go
+        env:
+          TEST_DATABASE_URL: postgres://otp:otp_secret_password@127.0.0.1:5432/otp?sslmode=disable
+        run: |
+          go test -v -race ./internal/adapter/out/postgres/...
+          go test -v -race -run "TestAPIIntegration_" ./internal/adapter/in/http/...
+
+  frontend-unit-and-e2e:
+    name: Frontend Unit & E2E Mock Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend-react
+        run: npm ci
+
+      - name: Lint and Build
+        working-directory: frontend-react
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Run Frontend Unit & E2E Mock Tests
+        working-directory: frontend-react
+        run: npx vitest run
