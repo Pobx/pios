@@ -348,6 +348,16 @@ describe('Full-App E2E User Journeys with Mock OIDC & API', () => {
                 },
               ],
             }
+          case '/v1/recycle/submodules':
+            return {
+              status: 200,
+              data: {
+                kiosks: [{ id: 1, org_id: 1, name: 'Kiosk-HSG1', lat: 0, lng: 0, status: 'active', total_waste_count: 10 }],
+                welfare_configs: [{ id: 1, org_id: 1, min_months_active: 6, min_total_weight: 50, default_payout_amount: 5000, criteria_description: '' }],
+                welfare_payouts: [],
+                annual_trash_subscriptions: [],
+              },
+            }
           case '/v1/tabwater/meters':
             return {
               status: 200,

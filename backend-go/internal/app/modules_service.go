@@ -168,7 +168,7 @@ func NewRecycleService(repo domain.RecycleRepository) *RecycleService {
 }
 
 func (s *RecycleService) ListItems(ctx context.Context, claims domain.Claims, requestedOrgID *int64) ([]domain.RecycleItem, error) {
-	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff, domain.RoleAnnualStaff) {
 		return nil, domain.ErrForbidden
 	}
 	orgID, err := claims.ResolveOrgScope(requestedOrgID)
@@ -183,6 +183,33 @@ func (s *RecycleService) ListItems(ctx context.Context, claims domain.Claims, re
 		return []domain.RecycleItem{}, nil
 	}
 	return items, nil
+}
+
+func (s *RecycleService) GetSubmodulesOverview(ctx context.Context, claims domain.Claims, requestedOrgID *int64) (domain.RecycleSubmodulesOverview, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff, domain.RoleAnnualStaff) {
+		return domain.RecycleSubmodulesOverview{}, domain.ErrForbidden
+	}
+	orgID, err := claims.ResolveOrgScope(requestedOrgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, err
+	}
+	ov, err := s.repo.GetSubmodulesOverview(ctx, orgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, err
+	}
+	if ov.Kiosks == nil {
+		ov.Kiosks = []domain.KioskSummary{}
+	}
+	if ov.WelfareConfigs == nil {
+		ov.WelfareConfigs = []domain.WelfareConfig{}
+	}
+	if ov.WelfarePayouts == nil {
+		ov.WelfarePayouts = []domain.WelfarePayout{}
+	}
+	if ov.AnnualTrashSubscriptions == nil {
+		ov.AnnualTrashSubscriptions = []domain.AnnualTrashSubscription{}
+	}
+	return ov, nil
 }
 
 // ---- Wave 5: TabwaterService (Meters & Invoices) ----------------------------

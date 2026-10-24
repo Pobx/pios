@@ -113,6 +113,11 @@ func (f *fakeRecycleRepo) RecordPurchase(_ context.Context, orgID int64, cmd dom
 		Status:      "completed",
 	}, nil
 }
+func (f *fakeRecycleRepo) GetSubmodulesOverview(context.Context, *int64) (domain.RecycleSubmodulesOverview, error) {
+	return domain.RecycleSubmodulesOverview{
+		Kiosks: []domain.KioskSummary{{ID: 1, OrgID: 1, Name: "Kiosk-01", Status: "active"}},
+	}, f.err
+}
 
 type fakeTabwaterRepo struct {
 	meters   []domain.WaterMeter

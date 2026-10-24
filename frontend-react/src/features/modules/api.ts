@@ -287,3 +287,78 @@ export const recordTabwaterReading = async (payload: {
 
 export const payTabwaterInvoice = async (invoiceId: number, cashierId = 1): Promise<WaterInvoice> =>
   (await api.post<WaterInvoice>(`/v1/tabwater/invoices/${invoiceId}/pay`, { cashier_id: cashierId })).data
+
+// ---- Wave 4 & 6 Submodules: Kiosk/IoT, Welfare Fund & Annual Trash ----------
+
+export interface KioskSummary {
+  id: number
+  org_id: number
+  name: string
+  lat: number
+  lng: number
+  status: string
+  total_waste_count: number
+}
+
+export interface WelfareConfig {
+  id: number
+  org_id: number
+  min_months_active: number
+  min_total_weight: number
+  default_payout_amount: number
+  criteria_description: string
+}
+
+export interface WelfarePayout {
+  id: number
+  org_id: number
+  deceased_name: string
+  beneficiary_name: string
+  amount: number
+  status: string
+}
+
+export interface AnnualTrashSubscription {
+  id: number
+  fiscal_year: string
+  user_id: number
+  annual_fee: number
+  month_fee: number
+  total_paid_amt: number
+  status: string
+}
+
+export interface RecycleSubmodulesOverview {
+  kiosks: KioskSummary[]
+  welfare_configs: WelfareConfig[]
+  welfare_payouts: WelfarePayout[]
+  annual_trash_subscriptions: AnnualTrashSubscription[]
+}
+
+export const fetchRecycleSubmodules = async (): Promise<RecycleSubmodulesOverview> =>
+  (await api.get<RecycleSubmodulesOverview>('/v1/recycle/submodules')).data
+
+// ---- CSV Export Helper (UTF-8 with BOM for Excel) ---------------------------
+
+export function exportRowsToCsv(filename: string, headers: string[], rows: (string | number)[][]): string {
+  const escapeCell = (val: string | number) => {
+    const s = String(val ?? '')
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const csvContent =
+    '\uFEFF' +
+    [headers.map(escapeCell).join(','), ...rows.map((r) => r.map(escapeCell).join(','))].join('\r\n')
+
+  if (typeof window !== 'undefined' && typeof URL.createObjectURL === 'function') {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+  return csvContent
+}

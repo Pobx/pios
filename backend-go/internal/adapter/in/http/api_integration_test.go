@@ -817,5 +817,32 @@ func TestAPIIntegration_WaveModules_WithRealPostgres(t *testing.T) {
 		if paidInv.Status != "paid" {
 			t.Fatalf("expected invoice status 'paid', got %q", paidInv.Status)
 		}
+
+		// 6. Submodules Overview (Kiosk / Welfare / AnnualTrash) & CSV Report Export
+		respSub, bodySub := env.doGET(t, "/api/v1/recycle/submodules", superTok)
+		if respSub.StatusCode != http.StatusOK {
+			t.Fatalf("GET /recycle/submodules status = %d: %s", respSub.StatusCode, string(bodySub))
+		}
+		var subOv struct {
+			Kiosks         []map[string]any `json:"kiosks"`
+			WelfareConfigs []map[string]any `json:"welfare_configs"`
+		}
+		if err := json.Unmarshal(bodySub, &subOv); err != nil {
+			t.Fatalf("unmarshal submodules: %v", err)
+		}
+		if len(subOv.Kiosks) == 0 || len(subOv.WelfareConfigs) == 0 {
+			t.Fatalf("expected non-empty kiosks and welfare_configs from migrated DB, got %+v", subOv)
+		}
+
+		respCSV, bodyCSV := env.doGET(t, "/api/v1/reports/tabwater-invoices.csv?limit=10", adminTok)
+		if respCSV.StatusCode != http.StatusOK {
+			t.Fatalf("GET /reports/tabwater-invoices.csv status = %d: %s", respCSV.StatusCode, string(bodyCSV))
+		}
+		if !strings.Contains(respCSV.Header.Get("Content-Type"), "text/csv") {
+			t.Fatalf("expected text/csv content-type, got %q", respCSV.Header.Get("Content-Type"))
+		}
+		if !strings.Contains(string(bodyCSV), "invoice_id,inv_no") {
+			t.Fatalf("expected CSV header row, got %s", string(bodyCSV))
+		}
 	})
 }

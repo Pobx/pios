@@ -366,6 +366,133 @@ func (s *Store) ListRecycleItems(ctx context.Context, orgID *int64) ([]domain.Re
 	return out, nil
 }
 
+const (
+	listKiosksSQL = `
+SELECT id,
+       COALESCE(org_id, 0),
+       COALESCE(name, ''),
+       COALESCE(lat, 0)::float8,
+       COALESCE(lng, 0)::float8,
+       COALESCE(status, 'offline'),
+       COALESCE(total_waste_count, 0)
+FROM kiosks
+WHERE ($1::bigint IS NULL OR org_id = $1)
+ORDER BY id
+`
+	listWelfareConfigsSQL = `
+SELECT id,
+       COALESCE(org_id, 0),
+       COALESCE(min_months_active, 0),
+       COALESCE(min_total_weight, 0),
+       COALESCE(default_payout_amount, 0)::float8,
+       COALESCE(criteria_description, '')
+FROM kp_welfare_configs
+WHERE ($1::bigint IS NULL OR org_id = $1)
+ORDER BY id
+`
+	listWelfarePayoutsSQL = `
+SELECT id,
+       COALESCE(org_id, 0),
+       COALESCE(deceased_name, ''),
+       COALESCE(beneficiary_name, ''),
+       COALESCE(amount, 0)::float8,
+       COALESCE(status, 'pending')
+FROM kp_welfare_payouts
+WHERE ($1::bigint IS NULL OR org_id = $1)
+ORDER BY id DESC
+LIMIT 50
+`
+	listAnnualTrashSubsSQL = `
+SELECT s.id,
+       COALESCE(s.fiscal_year, ''),
+       s.user_id,
+       COALESCE(s.annual_fee, 0)::float8,
+       COALESCE(s.month_fee, 0)::float8,
+       COALESCE(s.total_paid_amt, 0)::float8,
+       COALESCE(s.status, 'pending')
+FROM annual_trash_subscriptions s
+LEFT JOIN users u ON u.id = s.user_id
+WHERE ($1::bigint IS NULL OR u.org_id = $1 OR u.id IS NULL)
+ORDER BY s.id DESC
+LIMIT 50
+`
+)
+
+func (s *Store) GetSubmodulesOverview(ctx context.Context, orgID *int64) (domain.RecycleSubmodulesOverview, error) {
+	ov := domain.RecycleSubmodulesOverview{
+		Kiosks:                   []domain.KioskSummary{},
+		WelfareConfigs:           []domain.WelfareConfig{},
+		WelfarePayouts:           []domain.WelfarePayout{},
+		AnnualTrashSubscriptions: []domain.AnnualTrashSubscription{},
+	}
+
+	kRows, err := s.db.Query(ctx, listKiosksSQL, orgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("query kiosks: %w", err)
+	}
+	defer kRows.Close()
+	for kRows.Next() {
+		var k domain.KioskSummary
+		if err := kRows.Scan(&k.ID, &k.OrgID, &k.Name, &k.Lat, &k.Lng, &k.Status, &k.TotalWasteCount); err != nil {
+			return domain.RecycleSubmodulesOverview{}, fmt.Errorf("scan kiosk: %w", err)
+		}
+		ov.Kiosks = append(ov.Kiosks, k)
+	}
+	if err := kRows.Err(); err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("iterate kiosks: %w", err)
+	}
+
+	wcRows, err := s.db.Query(ctx, listWelfareConfigsSQL, orgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("query welfare configs: %w", err)
+	}
+	defer wcRows.Close()
+	for wcRows.Next() {
+		var wc domain.WelfareConfig
+		if err := wcRows.Scan(&wc.ID, &wc.OrgID, &wc.MinMonthsActive, &wc.MinTotalWeight, &wc.DefaultPayoutAmount, &wc.CriteriaDescription); err != nil {
+			return domain.RecycleSubmodulesOverview{}, fmt.Errorf("scan welfare config: %w", err)
+		}
+		ov.WelfareConfigs = append(ov.WelfareConfigs, wc)
+	}
+	if err := wcRows.Err(); err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("iterate welfare configs: %w", err)
+	}
+
+	wpRows, err := s.db.Query(ctx, listWelfarePayoutsSQL, orgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("query welfare payouts: %w", err)
+	}
+	defer wpRows.Close()
+	for wpRows.Next() {
+		var wp domain.WelfarePayout
+		if err := wpRows.Scan(&wp.ID, &wp.OrgID, &wp.DeceasedName, &wp.BeneficiaryName, &wp.Amount, &wp.Status); err != nil {
+			return domain.RecycleSubmodulesOverview{}, fmt.Errorf("scan welfare payout: %w", err)
+		}
+		ov.WelfarePayouts = append(ov.WelfarePayouts, wp)
+	}
+	if err := wpRows.Err(); err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("iterate welfare payouts: %w", err)
+	}
+
+	atRows, err := s.db.Query(ctx, listAnnualTrashSubsSQL, orgID)
+	if err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("query annual trash subscriptions: %w", err)
+	}
+	defer atRows.Close()
+	for atRows.Next() {
+		var at domain.AnnualTrashSubscription
+		if err := atRows.Scan(&at.ID, &at.FiscalYear, &at.UserID, &at.AnnualFee, &at.MonthFee, &at.TotalPaidAmt, &at.Status); err != nil {
+			return domain.RecycleSubmodulesOverview{}, fmt.Errorf("scan annual trash subscription: %w", err)
+		}
+		ov.AnnualTrashSubscriptions = append(ov.AnnualTrashSubscriptions, at)
+	}
+	if err := atRows.Err(); err != nil {
+		return domain.RecycleSubmodulesOverview{}, fmt.Errorf("iterate annual trash subscriptions: %w", err)
+	}
+
+	return ov, nil
+}
+
 // ---- Wave 5: Tabwater Module (Water Meters & Invoices) ----------------------
 
 const listMetersSQL = `

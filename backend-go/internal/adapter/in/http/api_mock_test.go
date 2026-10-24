@@ -388,6 +388,12 @@ func (m *mockAllModulesRepo) ListBankAccounts(context.Context, *int64) ([]domain
 func (m *mockAllModulesRepo) RecordPurchase(_ context.Context, orgID int64, cmd domain.RecordRecyclePurchaseCommand) (domain.RecyclePurchaseTransaction, error) {
 	return domain.RecyclePurchaseTransaction{ID: 55, OrgID: orgID, TransNo: cmd.TransNo, UserID: cmd.UserID, TotalWeight: cmd.TotalWeight, TotalAmount: cmd.TotalAmount, TotalPoints: cmd.TotalPoints, Status: "completed"}, m.err
 }
+func (m *mockAllModulesRepo) GetSubmodulesOverview(context.Context, *int64) (domain.RecycleSubmodulesOverview, error) {
+	return domain.RecycleSubmodulesOverview{
+		Kiosks:         []domain.KioskSummary{{ID: 1, OrgID: 1, Name: "Kiosk-HSG1", Status: "active", TotalWasteCount: 42}},
+		WelfareConfigs: []domain.WelfareConfig{{ID: 1, OrgID: 1, DefaultPayoutAmount: 5000}},
+	}, m.err
+}
 func (m *mockAllModulesRepo) ListMeters(context.Context, *int64, int, int) ([]domain.WaterMeter, error) {
 	return m.meters, m.err
 }
@@ -447,8 +453,10 @@ func TestAPIMock_WaveModules(t *testing.T) {
 		"/api/v1/inventory/transactions",
 		"/api/v1/foodwaste/summary",
 		"/api/v1/recycle/items",
+		"/api/v1/recycle/submodules",
 		"/api/v1/tabwater/meters?limit=10&offset=0",
 		"/api/v1/tabwater/invoices?limit=10&offset=0&status=paid",
+		"/api/v1/reports/tabwater-invoices.csv?limit=10&offset=0",
 	}
 
 	for _, ep := range endpoints {

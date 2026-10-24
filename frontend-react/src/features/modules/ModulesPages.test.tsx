@@ -30,6 +30,12 @@ vi.mock('./api', async (importOriginal) => {
     createWasteLog: vi.fn(),
     fetchRecycleItems: vi.fn(),
     fetchRecycleAccounts: vi.fn().mockResolvedValue([]),
+    fetchRecycleSubmodules: vi.fn().mockResolvedValue({
+      kiosks: [{ id: 1, org_id: 1, name: 'Kiosk-HSG1', lat: 15.8, lng: 104.1, status: 'active', total_waste_count: 42 }],
+      welfare_configs: [{ id: 1, org_id: 1, min_months_active: 6, min_total_weight: 50, default_payout_amount: 5000, criteria_description: '' }],
+      welfare_payouts: [],
+      annual_trash_subscriptions: [],
+    }),
     recordRecyclePurchase: vi.fn(),
     fetchTabwaterMeters: vi.fn(),
     fetchTabwaterInvoices: vi.fn(),

@@ -17,11 +17,13 @@ import {
   createWasteLog,
   fetchRecycleItems,
   fetchRecycleAccounts,
+  fetchRecycleSubmodules,
   recordRecyclePurchase,
   fetchTabwaterMeters,
   fetchTabwaterInvoices,
   recordTabwaterReading,
   payTabwaterInvoice,
+  exportRowsToCsv,
   type WaterInvoice,
 } from './api'
 
@@ -697,6 +699,10 @@ export function RecycleBankPage() {
     queryKey: ['recycle-accounts'],
     queryFn: fetchRecycleAccounts,
   })
+  const submodulesQ = useQuery({
+    queryKey: ['recycle-submodules'],
+    queryFn: fetchRecycleSubmodules,
+  })
 
   const [transNo, setTransNo] = useState('')
   const [userId, setUserId] = useState('1')
@@ -724,7 +730,24 @@ export function RecycleBankPage() {
   return (
     <section className="space-y-8">
       <div>
-        <h1 className="mb-4 text-2xl font-semibold">Recycle Bank (KeptKaya)</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Recycle Bank (KeptKaya)</h1>
+          {data && data.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                exportRowsToCsv(
+                  'recycle-items.csv',
+                  ['code', 'name', 'group', 'member_price', 'points'],
+                  data.map((i) => [i.code, i.name, i.group_name, i.price_for_member, i.point]),
+                )
+              }
+              className="rounded border bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Export Items CSV
+            </button>
+          )}
+        </div>
 
         <form
           aria-label="Record Recycle Purchase"
@@ -830,6 +853,43 @@ export function RecycleBankPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {submodulesQ.data && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded bg-white p-4 shadow">
+            <h2 className="mb-2 text-base font-semibold">IoT Smart Kiosks ({submodulesQ.data.kiosks.length})</h2>
+            {submodulesQ.data.kiosks.length === 0 ? (
+              <p className="text-xs text-slate-500">No kiosks registered</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {submodulesQ.data.kiosks.map((k) => (
+                  <li key={k.id} className="flex items-center justify-between border-b py-1 last:border-0">
+                    <span className="font-medium">{k.name}</span>
+                    <span className="text-xs text-slate-600">
+                      {k.status} • {k.total_waste_count} items
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded bg-white p-4 shadow">
+            <h2 className="mb-2 text-base font-semibold">
+              Community Welfare & Annual Trash ({submodulesQ.data.welfare_configs.length} rules /{' '}
+              {submodulesQ.data.annual_trash_subscriptions.length} bins)
+            </h2>
+            {submodulesQ.data.welfare_configs.map((wc) => (
+              <div key={wc.id} className="text-sm text-slate-700">
+                <div>Default Payout: {wc.default_payout_amount.toFixed(2)} THB</div>
+                <div className="text-xs text-slate-500">
+                  Min Active: {wc.min_months_active} months • Min Weight: {wc.min_total_weight} kg
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -951,7 +1011,22 @@ export function TabwaterPage() {
 
       {invoicesQ.data && invoicesQ.data.length > 0 && (
         <div>
-          <h2 className="mb-3 text-lg font-semibold">Water Invoices</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Water Invoices</h2>
+            <button
+              type="button"
+              onClick={() =>
+                exportRowsToCsv(
+                  'tabwater-invoices.csv',
+                  ['inv_no', 'period', 'water_used', 'totalpaid', 'status'],
+                  invoicesQ.data.map((i) => [i.inv_no, i.period_name, i.water_used, i.totalpaid, i.status]),
+                )
+              }
+              className="rounded border bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Export Invoices CSV
+            </button>
+          </div>
           <div className="overflow-x-auto rounded bg-white shadow">
             <table className="w-full text-left text-sm">
               <thead className="border-b bg-slate-100 text-slate-600">

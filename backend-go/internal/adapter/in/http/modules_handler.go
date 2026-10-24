@@ -1,6 +1,9 @@
 package http
 
 import (
+	"bytes"
+	"encoding/csv"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,21 +50,23 @@ func registerModuleRoutes(v1 *echo.Group, h *handler) {
 		v1.POST("/foodwaste/logs", h.createWasteLog, requireAnyRole(fwRoles...))
 	}
 
-	// Wave 4: KeptKaya / Recycle Bank Module (Read + Accounts + Purchase)
+	// Wave 4: KeptKaya / Recycle Bank Module (Read + Accounts + Purchase + Submodules: Kiosk/Welfare/AnnualTrash)
 	if h.recycle != nil {
-		rcRoles := []string{domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff}
+		rcRoles := []string{domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff, domain.RoleAnnualStaff}
 		v1.GET("/recycle/items", h.listRecycleItems, requireAnyRole(rcRoles...))
 		v1.GET("/recycle/accounts", h.listRecycleAccounts, requireAnyRole(rcRoles...))
 		v1.POST("/recycle/purchases", h.recordRecyclePurchase, requireAnyRole(rcRoles...))
+		v1.GET("/recycle/submodules", h.getRecycleSubmodules, requireAnyRole(rcRoles...))
 	}
 
-	// Wave 5: Tabwater Module (Meters, Invoices, Readings & Payment)
+	// Wave 5: Tabwater Module (Meters, Invoices, Readings, Payment & CSV Report Export)
 	if h.tabwater != nil {
 		twRoles := []string{domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleTabwaterStaff, domain.RoleFinanceStaff}
 		v1.GET("/tabwater/meters", h.listTabwaterMeters, requireAnyRole(twRoles...))
 		v1.GET("/tabwater/invoices", h.listTabwaterInvoices, requireAnyRole(twRoles...))
 		v1.POST("/tabwater/readings", h.recordTabwaterReading, requireAnyRole(twRoles...))
 		v1.POST("/tabwater/invoices/:id/pay", h.payTabwaterInvoice, requireAnyRole(twRoles...))
+		v1.GET("/reports/tabwater-invoices.csv", h.exportTabwaterInvoicesCSV, requireAnyRole(twRoles...))
 	}
 }
 
@@ -405,4 +410,57 @@ func (h *handler) payTabwaterInvoice(c echo.Context) error {
 		return mapError(c, err)
 	}
 	return c.JSON(http.StatusOK, updated)
+}
+
+func (h *handler) getRecycleSubmodules(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	ov, err := h.recycle.GetSubmodulesOverview(c.Request().Context(), claims, reqOrgID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusOK, ov)
+}
+
+func (h *handler) exportTabwaterInvoicesCSV(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	limit, offset := parsePagination(c)
+	invoices, err := h.tabwater.ListInvoices(c.Request().Context(), claims, reqOrgID, c.QueryParam("status"), limit, offset)
+	if err != nil {
+		return mapError(c, err)
+	}
+
+	var buf bytes.Buffer
+	// Write UTF-8 BOM for Excel compatibility
+	buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"invoice_id", "inv_no", "org_id", "meter_id", "period", "last_meter", "current_meter", "water_used", "water_charge", "reserve_fee", "vat", "total_paid", "status"})
+	for _, inv := range invoices {
+		_ = w.Write([]string{
+			strconv.FormatInt(inv.ID, 10),
+			inv.InvoiceNo,
+			strconv.FormatInt(inv.OrgID, 10),
+			strconv.FormatInt(inv.MeterID, 10),
+			inv.PeriodName,
+			fmt.Sprintf("%.2f", inv.LastMeter),
+			fmt.Sprintf("%.2f", inv.CurrentMeter),
+			fmt.Sprintf("%.2f", inv.WaterUsed),
+			fmt.Sprintf("%.2f", inv.Paid),
+			fmt.Sprintf("%.2f", inv.ReserveMeter),
+			fmt.Sprintf("%.2f", inv.Vat),
+			fmt.Sprintf("%.2f", inv.TotalPaid),
+			inv.Status,
+		})
+	}
+	w.Flush()
+
+	c.Response().Header().Set(echo.HeaderContentDisposition, `attachment; filename="tabwater-invoices.csv"`)
+	return c.Blob(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
 }

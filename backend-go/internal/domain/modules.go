@@ -177,10 +177,56 @@ type RecycleItem struct {
 	Point           float64 `json:"point"`
 }
 
+type KioskSummary struct {
+	ID              int64   `json:"id"`
+	OrgID           int64   `json:"org_id"`
+	Name            string  `json:"name"`
+	Lat             float64 `json:"lat"`
+	Lng             float64 `json:"lng"`
+	Status          string  `json:"status"`
+	TotalWasteCount int     `json:"total_waste_count"`
+}
+
+type WelfareConfig struct {
+	ID                  int64   `json:"id"`
+	OrgID               int64   `json:"org_id"`
+	MinMonthsActive     int     `json:"min_months_active"`
+	MinTotalWeight      int     `json:"min_total_weight"`
+	DefaultPayoutAmount float64 `json:"default_payout_amount"`
+	CriteriaDescription string  `json:"criteria_description"`
+}
+
+type WelfarePayout struct {
+	ID              int64   `json:"id"`
+	OrgID           int64   `json:"org_id"`
+	DeceasedName    string  `json:"deceased_name"`
+	BeneficiaryName string  `json:"beneficiary_name"`
+	Amount          float64 `json:"amount"`
+	Status          string  `json:"status"`
+}
+
+type AnnualTrashSubscription struct {
+	ID           int64   `json:"id"`
+	FiscalYear   string  `json:"fiscal_year"`
+	UserID       int64   `json:"user_id"`
+	AnnualFee    float64 `json:"annual_fee"`
+	MonthFee     float64 `json:"month_fee"`
+	TotalPaidAmt float64 `json:"total_paid_amt"`
+	Status       string  `json:"status"`
+}
+
+type RecycleSubmodulesOverview struct {
+	Kiosks                   []KioskSummary            `json:"kiosks"`
+	WelfareConfigs           []WelfareConfig           `json:"welfare_configs"`
+	WelfarePayouts           []WelfarePayout           `json:"welfare_payouts"`
+	AnnualTrashSubscriptions []AnnualTrashSubscription `json:"annual_trash_subscriptions"`
+}
+
 type RecycleRepository interface {
 	ListRecycleItems(ctx context.Context, orgID *int64) ([]RecycleItem, error)
 	ListBankAccounts(ctx context.Context, orgID *int64) ([]BankAccountSummary, error)
 	RecordPurchase(ctx context.Context, orgID int64, cmd RecordRecyclePurchaseCommand) (RecyclePurchaseTransaction, error)
+	GetSubmodulesOverview(ctx context.Context, orgID *int64) (RecycleSubmodulesOverview, error)
 }
 
 // ---- Wave 5: Tabwater Module (Meters, Invoices & Progressive Tariff) --------
