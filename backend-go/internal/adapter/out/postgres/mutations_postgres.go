@@ -18,7 +18,8 @@ const (
 	findUserByUsernameSQL = `
 SELECT id, org_id
 FROM users
-WHERE username = $2 AND ($1::bigint IS NULL OR org_id = $1)
+WHERE (LOWER(username) = LOWER($2) OR ('user_' || id::text) = LOWER($2))
+  AND ($1::bigint IS NULL OR org_id = $1)
 ORDER BY id
 LIMIT 1
 `

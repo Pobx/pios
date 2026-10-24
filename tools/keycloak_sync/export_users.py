@@ -2,16 +2,20 @@
 """
 Export users and staffs from PostgreSQL (otp) into a Keycloak-compatible
 Partial Import JSON file with org_id attributes, realm roles, and one-time
-staff linking codes.
+staff linking codes. Also supports live synchronization to Keycloak Admin API.
 
 Usage:
   python3 tools/keycloak_sync/export_users.py --limit 100 --out /tmp/kc_users.json
+  python3 tools/keycloak_sync/export_users.py --limit 25 --sync-keycloak
 """
 import argparse
 import hashlib
 import json
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 
 
 def run_psql_json(sql: str, container: str = "otp-postgres", db_user: str = "otp", db_name: str = "otp"):
@@ -29,7 +33,7 @@ def generate_one_time_staff_code(user_id: int, org_id: int, username: str) -> st
     return f"OTP-{org_id}-{user_id}-{digest}"
 
 
-def build_keycloak_users(limit: int = 100):
+def build_keycloak_users(limit: int = 100, default_password: str = "password"):
     sql = f"""
     SELECT u.id,
            COALESCE(u.org_id, 1) AS org_id,
@@ -70,27 +74,82 @@ def build_keycloak_users(limit: int = 100):
             "emailVerified": True,
             "firstName": r["firstname"],
             "lastName": r["lastname"],
-            "email": r["email"],
+            "email": f"user_{r['id']}@otp.local",
             "realmRoles": [r["primary_role"]],
             "attributes": attrs,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": default_password,
+                    "temporary": False,
+                }
+            ],
         })
     return {"ifResourceExists": "SKIP", "users": kc_users}
+
+
+def get_admin_token(kc_url: str, admin_user: str, admin_password: str) -> str:
+    data = urllib.parse.urlencode({
+        "client_id": "admin-cli",
+        "grant_type": "password",
+        "username": admin_user,
+        "password": admin_password,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        f"{kc_url}/realms/master/protocol/openid-connect/token",
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        body = json.loads(resp.read().decode("utf-8"))
+        return body["access_token"]
+
+
+def sync_to_keycloak(payload: dict, kc_url: str, realm: str, admin_user: str, admin_password: str):
+    token = get_admin_token(kc_url, admin_user, admin_password)
+    req = urllib.request.Request(
+        f"{kc_url}/admin/realms/{realm}/partialImport",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read().decode("utf-8"))
+        return result
 
 
 def main():
     parser = argparse.ArgumentParser(description="Export PostgreSQL OTP users to Keycloak Partial Import JSON")
     parser.add_argument("--limit", type=int, default=50, help="Max users to export (default: 50)")
     parser.add_argument("--out", type=str, default="-", help="Output JSON file path ('-' for stdout)")
+    parser.add_argument("--sync-keycloak", action="store_true", help="Import directly into running Keycloak")
+    parser.add_argument("--kc-url", type=str, default="http://localhost:8081", help="Keycloak base URL")
+    parser.add_argument("--kc-realm", type=str, default="otp", help="Keycloak realm name")
+    parser.add_argument("--kc-admin", type=str, default="admin", help="Keycloak admin username")
+    parser.add_argument("--kc-password", type=str, default="admin", help="Keycloak admin password")
     args = parser.parse_args()
 
     payload = build_keycloak_users(limit=args.limit)
     encoded = json.dumps(payload, ensure_ascii=False, indent=2)
-    if args.out == "-":
-        print(encoded)
-    else:
+
+    if args.out != "-":
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(encoded + "\n")
         print(f"Exported {len(payload['users'])} users to {args.out}", file=sys.stderr)
+    elif not args.sync_keycloak:
+        print(encoded)
+
+    if args.sync_keycloak:
+        res = sync_to_keycloak(payload, args.kc_url, args.kc_realm, args.kc_admin, args.kc_password)
+        print(
+            f"Keycloak Partial Import completed: added={res.get('added', 0)}, "
+            f"skipped={res.get('skipped', 0)}, overwritten={res.get('overwritten', 0)}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

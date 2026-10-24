@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   ResidentPage,
@@ -191,6 +192,18 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
     expect(await screen.findByText('TW-0001')).toBeInTheDocument()
     expect(await screen.findByText('INV-6901-001')).toBeInTheDocument()
     expect(screen.getByText('123.05')).toBeInTheDocument()
+
+    // Open Printable Official Receipt Modal
+    const user = userEvent.setup()
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+    await user.click(screen.getByTestId('print-invoice-501'))
+    const dialog = screen.getByRole('dialog', { name: /printable water invoice/i })
+    expect(within(dialog).getByText(/ใบเสร็จรับเงินค่าน้ำประปา/i)).toBeInTheDocument()
+    expect(within(dialog).getByText('123.05 THB')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /print now/i }))
+    expect(printSpy).toHaveBeenCalledTimes(1)
+    await user.click(within(dialog).getByRole('button', { name: /close/i }))
+    printSpy.mockRestore()
   })
 
   it('Wave 1.5 ResidentPage renders resident water meters, invoices, and bank accounts', async () => {

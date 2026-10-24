@@ -22,11 +22,111 @@ import {
   fetchTabwaterInvoices,
   recordTabwaterReading,
   payTabwaterInvoice,
+  type WaterInvoice,
 } from './api'
+
+// ---- Shared Printable Water Invoice / Receipt Modal -------------------------
+
+export function PrintableInvoiceModal({
+  invoice,
+  onClose,
+}: {
+  invoice: WaterInvoice
+  onClose: () => void
+}) {
+  const isPaid = invoice.status === 'paid'
+  return (
+    <div
+      role="dialog"
+      aria-label="Printable Water Invoice"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl border">
+        <div className="mb-4 flex items-start justify-between border-b pb-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              {isPaid ? 'ใบเสร็จรับเงินค่าน้ำประปา (Official Receipt)' : 'ใบแจ้งหนี้ค่าน้ำประปา (Water Bill)'}
+            </h2>
+            <p className="text-xs text-slate-500">Organization #{invoice.org_id} • Meter #{invoice.meter_id}</p>
+          </div>
+          <span
+            className={`rounded px-2.5 py-0.5 text-xs font-semibold uppercase ${
+              isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            }`}
+          >
+            {invoice.status}
+          </span>
+        </div>
+
+        <dl className="mb-4 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <dt className="text-xs text-slate-500">Invoice / Receipt No.</dt>
+            <dd className="font-mono font-semibold">{invoice.inv_no}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Billing Period</dt>
+            <dd className="font-medium">{invoice.period_name || `Period #${invoice.period_id}`}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Previous Reading</dt>
+            <dd>{invoice.lastmeter}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Current Reading</dt>
+            <dd>{invoice.currentmeter}</dd>
+          </div>
+        </dl>
+
+        <table className="mb-4 w-full border-t border-b text-sm">
+          <tbody>
+            <tr className="border-b">
+              <td className="py-1.5 text-slate-600">Water Used (m³)</td>
+              <td className="py-1.5 text-right font-medium">{invoice.water_used} m³</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-1.5 text-slate-600">Water Usage Charge</td>
+              <td className="py-1.5 text-right">{invoice.paid.toFixed(2)} THB</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-1.5 text-slate-600">Meter Maintenance Fee</td>
+              <td className="py-1.5 text-right">{invoice.reserve_meter.toFixed(2)} THB</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-1.5 text-slate-600">VAT (7%)</td>
+              <td className="py-1.5 text-right">{invoice.vat.toFixed(2)} THB</td>
+            </tr>
+            <tr className="font-bold text-slate-900">
+              <td className="py-2">Total Amount</td>
+              <td className="py-2 text-right text-base">{invoice.totalpaid.toFixed(2)} THB</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+            onClick={() => window.print()}
+          >
+            Print Now
+          </button>
+          <button
+            type="button"
+            className="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-900"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ---- Wave 1.5: Resident Portal Page (Role: user & staff) --------------------
 
 export function ResidentPage() {
+  const [selectedInvoice, setSelectedInvoice] = useState<WaterInvoice | null>(null)
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ['resident-overview'],
     queryFn: fetchResidentOverview,
@@ -64,6 +164,7 @@ export function ResidentPage() {
                     <th className="px-4 py-2">Units Used</th>
                     <th className="px-4 py-2">Total (THB)</th>
                     <th className="px-4 py-2">Status</th>
+                    <th className="px-4 py-2">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -74,6 +175,16 @@ export function ResidentPage() {
                       <td className="px-4 py-2">{inv.water_used}</td>
                       <td className="px-4 py-2">{inv.totalpaid.toFixed(2)}</td>
                       <td className="px-4 py-2">{inv.status}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          type="button"
+                          data-testid={`print-invoice-${inv.id}`}
+                          className="rounded border px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                          onClick={() => setSelectedInvoice(inv)}
+                        >
+                          Print / Receipt
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -82,6 +193,7 @@ export function ResidentPage() {
           )}
         </>
       )}
+      {selectedInvoice && <PrintableInvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </section>
   )
 }
@@ -729,6 +841,7 @@ export function RecycleBankPage() {
 
 export function TabwaterPage() {
   const qc = useQueryClient()
+  const [selectedInvoice, setSelectedInvoice] = useState<WaterInvoice | null>(null)
   const metersQ = useQuery({ queryKey: ['tabwater-meters'], queryFn: () => fetchTabwaterMeters({ limit: 50, offset: 0 }) })
   const invoicesQ = useQuery({ queryKey: ['tabwater-invoices'], queryFn: () => fetchTabwaterInvoices({ limit: 50, offset: 0 }) })
 
@@ -859,7 +972,7 @@ export function TabwaterPage() {
                     <td className="px-4 py-2">{inv.water_used}</td>
                     <td className="px-4 py-2">{inv.totalpaid.toFixed(2)}</td>
                     <td className="px-4 py-2">{inv.status}</td>
-                    <td className="px-4 py-2">
+                    <td className="flex items-center gap-2 px-4 py-2">
                       {inv.status !== 'paid' && (
                         <button
                           className="rounded bg-blue-700 px-2 py-0.5 text-xs text-white"
@@ -868,6 +981,14 @@ export function TabwaterPage() {
                           Pay Invoice
                         </button>
                       )}
+                      <button
+                        type="button"
+                        data-testid={`print-invoice-${inv.id}`}
+                        className="rounded border px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                        onClick={() => setSelectedInvoice(inv)}
+                      >
+                        Print / Receipt
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -876,6 +997,7 @@ export function TabwaterPage() {
           </div>
         </div>
       )}
+      {selectedInvoice && <PrintableInvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </section>
   )
 }
