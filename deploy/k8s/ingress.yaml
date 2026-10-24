@@ -1,0 +1,26 @@
+# Edge Ingress: TLS terminates here and everything is handed to the nginx gateway Service.
+# Requires an Ingress controller in the cluster (class below is a placeholder).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otp
+  namespace: otp
+  labels: {app.kubernetes.io/part-of: otp}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod   # uncomment if using cert-manager
+spec:
+  ingressClassName: nginx   # CHANGE_ME to your IngressClass
+  tls:
+    - hosts: ["otp.example.com"]
+      secretName: otp-tls   # TLS PLACEHOLDER: create with `kubectl -n otp create secret tls otp-tls --cert=... --key=...`
+  rules:
+    - host: otp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx
+                port: {number: 80}
