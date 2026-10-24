@@ -90,6 +90,7 @@
         "post.logout.redirect.uris": "http://localhost/*##http://localhost:5173/*"
       },
       "defaultClientScopes": [
+        "basic",
         "web-origins",
         "profile",
         "roles",
@@ -149,6 +150,7 @@
       "directAccessGrantsEnabled": true,
       "implicitFlowEnabled": false,
       "defaultClientScopes": [
+        "basic",
         "profile",
         "roles",
         "email"
