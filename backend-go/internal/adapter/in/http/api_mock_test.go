@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -348,23 +349,56 @@ func (m *mockAllModulesRepo) LinkUserLineAccount(_ context.Context, orgID *int64
 	}
 	return domain.UserSummary{ID: userID, OrgID: orgID, Username: "linked_user", LineUserID: lineUserID}, nil
 }
+func (m *mockAllModulesRepo) GetResidentOverview(_ context.Context, orgID *int64, username string) (domain.ResidentOverview, error) {
+	if m.err != nil {
+		return domain.ResidentOverview{}, m.err
+	}
+	return domain.ResidentOverview{Username: username, OrgID: orgID, WaterMeters: m.meters, Invoices: m.invoices}, nil
+}
 func (m *mockAllModulesRepo) ListItems(context.Context, *int64) ([]domain.InventoryItem, error) {
 	return m.invItems, m.err
 }
 func (m *mockAllModulesRepo) ListTransactions(context.Context, *int64) ([]domain.InventoryTransaction, error) {
 	return m.invTxs, m.err
 }
+func (m *mockAllModulesRepo) CreateItem(_ context.Context, orgID int64, cmd domain.CreateInventoryItemCommand) (domain.InventoryItem, error) {
+	return domain.InventoryItem{ID: 99, OrgID: orgID, Code: cmd.Code, Name: cmd.Name}, m.err
+}
+func (m *mockAllModulesRepo) CreateTransaction(_ context.Context, orgID int64, cmd domain.CreateInventoryTransactionCommand) (domain.InventoryTransaction, error) {
+	return domain.InventoryTransaction{ID: 88, OrgID: orgID, RefNo: cmd.RefNo, ItemID: cmd.ItemID, Quantity: cmd.Quantity, Status: "PENDING"}, m.err
+}
+func (m *mockAllModulesRepo) DecideTransaction(_ context.Context, _ *int64, cmd domain.TransactionDecisionCommand) (domain.InventoryTransaction, error) {
+	return domain.InventoryTransaction{ID: cmd.TransactionID, Status: cmd.Decision}, m.err
+}
 func (m *mockAllModulesRepo) GetSummary(context.Context, *int64) (domain.FoodWasteSummary, error) {
 	return m.fwSummary, m.err
 }
+func (m *mockAllModulesRepo) CreateCompostBatch(_ context.Context, cmd domain.CreateCompostBatchCommand) (domain.CompostBatch, error) {
+	return domain.CompostBatch{ID: 77, UserID: cmd.UserID, BatchCode: cmd.BatchCode, Status: "filling"}, m.err
+}
+func (m *mockAllModulesRepo) CreateWasteLog(_ context.Context, cmd domain.CreateWasteLogCommand) (domain.WasteLogEntry, error) {
+	return domain.WasteLogEntry{ID: 66, UserID: cmd.UserID, WeightKg: cmd.WeightKg, Moisture: cmd.Moisture, CarbonSavedKg: cmd.ComputedCarbonSavedKg()}, m.err
+}
 func (m *mockAllModulesRepo) ListRecycleItems(context.Context, *int64) ([]domain.RecycleItem, error) {
 	return m.recycleItems, m.err
+}
+func (m *mockAllModulesRepo) ListBankAccounts(context.Context, *int64) ([]domain.BankAccountSummary, error) {
+	return []domain.BankAccountSummary{{ID: 1, OrgID: 1, UserID: 1, AccountNo: "ACC-01", Balance: 100, Points: 50, Status: "active"}}, m.err
+}
+func (m *mockAllModulesRepo) RecordPurchase(_ context.Context, orgID int64, cmd domain.RecordRecyclePurchaseCommand) (domain.RecyclePurchaseTransaction, error) {
+	return domain.RecyclePurchaseTransaction{ID: 55, OrgID: orgID, TransNo: cmd.TransNo, UserID: cmd.UserID, TotalWeight: cmd.TotalWeight, TotalAmount: cmd.TotalAmount, TotalPoints: cmd.TotalPoints, Status: "completed"}, m.err
 }
 func (m *mockAllModulesRepo) ListMeters(context.Context, *int64, int, int) ([]domain.WaterMeter, error) {
 	return m.meters, m.err
 }
 func (m *mockAllModulesRepo) ListInvoices(context.Context, *int64, string, int, int) ([]domain.WaterInvoice, error) {
 	return m.invoices, m.err
+}
+func (m *mockAllModulesRepo) RecordMeterReading(_ context.Context, orgID int64, cmd domain.RecordMeterReadingCommand) (domain.WaterInvoice, error) {
+	return domain.WaterInvoice{ID: 44, InvoiceNo: cmd.InvoiceNo, OrgID: orgID, MeterID: cmd.MeterID, PeriodID: cmd.PeriodID, CurrentMeter: cmd.CurrentMeter, Status: "invoice"}, m.err
+}
+func (m *mockAllModulesRepo) PayInvoice(_ context.Context, _ *int64, cmd domain.PayWaterInvoiceCommand) (domain.WaterInvoice, error) {
+	return domain.WaterInvoice{ID: cmd.InvoiceID, Status: "paid"}, m.err
 }
 
 func TestAPIMock_WaveModules(t *testing.T) {
@@ -461,5 +495,50 @@ func TestAPIMock_WaveModules(t *testing.T) {
 		// Empty body -> 400 Bad Request
 		srv.ServeHTTP(rec, req)
 		assertProblem(t, rec, http.StatusBadRequest)
+	})
+
+	t.Run("GET /api/v1/resident/overview succeeds for role user", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/resident/overview", nil)
+		req.Header.Set("Authorization", "Bearer user-tok")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("POST write endpoints across Waves 2 to 5 succeed for admin and return 403 for user", func(t *testing.T) {
+		postCases := []struct {
+			path       string
+			payload    string
+			wantStatus int
+		}{
+			{"/api/v1/inventory/items", `{"code":"INV-99","name":"ท่อ PVC","unit":"เส้น","min_stock":5}`, http.StatusCreated},
+			{"/api/v1/inventory/transactions", `{"ref_no":"REQ-99","item_id":1,"requester_id":1,"quantity":2,"purpose":"ซ่อมท่อ"}`, http.StatusCreated},
+			{"/api/v1/inventory/transactions/10/decision", `{"decision":"APPROVED","comment":"อนุมัติ"}`, http.StatusOK},
+			{"/api/v1/foodwaste/batches", `{"user_id":1,"batch_code":"FW-99","start_date":"2026-10-24"}`, http.StatusCreated},
+			{"/api/v1/foodwaste/logs", `{"user_id":1,"weight_kg":4.0,"moisture":"good"}`, http.StatusCreated},
+			{"/api/v1/recycle/purchases", `{"trans_no":"KP-TX-99","user_id":1,"total_weight":5.5,"total_amount":45,"total_points":20}`, http.StatusCreated},
+			{"/api/v1/tabwater/readings", `{"inv_no":"INV-99","meter_id":1,"period_id":1,"current_meter":150,"reserve_fee":10,"vat_percent":7}`, http.StatusCreated},
+			{"/api/v1/tabwater/invoices/5001/pay", `{"cashier_id":1}`, http.StatusOK},
+		}
+
+		for _, pc := range postCases {
+			req := httptest.NewRequest(http.MethodPost, pc.path, strings.NewReader(pc.payload))
+			req.Header.Set("Authorization", "Bearer admin-tok")
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != pc.wantStatus {
+				t.Fatalf("POST %s: status = %d, want %d (body: %s)", pc.path, rec.Code, pc.wantStatus, rec.Body.String())
+			}
+
+			reqForbidden := httptest.NewRequest(http.MethodPost, pc.path, strings.NewReader(pc.payload))
+			reqForbidden.Header.Set("Authorization", "Bearer user-tok")
+			reqForbidden.Header.Set("Content-Type", "application/json")
+			recForbidden := httptest.NewRecorder()
+			srv.ServeHTTP(recForbidden, reqForbidden)
+			assertProblem(t, recForbidden, http.StatusForbidden)
+		}
 	})
 }

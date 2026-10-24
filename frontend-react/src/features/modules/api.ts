@@ -172,3 +172,118 @@ export const fetchTabwaterMeters = async (params?: { limit?: number; offset?: nu
 
 export const fetchTabwaterInvoices = async (params?: { status?: string; limit?: number; offset?: number }): Promise<WaterInvoice[]> =>
   (await api.get<WaterInvoice[]>('/v1/tabwater/invoices', { params })).data
+
+// ---- Write / Mutation & Resident Portal APIs (Waves 1.5 to 5) ---------------
+
+export interface BankAccountSummary {
+  id: number
+  org_id: number
+  user_id: number
+  entity_type: string
+  account_no: string
+  balance: number
+  points: number
+  status: string
+}
+
+export interface ResidentOverview {
+  username: string
+  org_id: number | null
+  water_meters: WaterMeter[]
+  invoices: WaterInvoice[]
+  bank_accounts: BankAccountSummary[]
+}
+
+export const fetchResidentOverview = async (): Promise<ResidentOverview> =>
+  (await api.get<ResidentOverview>('/v1/resident/overview')).data
+
+export interface CreateInventoryItemInput {
+  category_id?: number
+  code: string
+  name: string
+  unit: string
+  min_stock: number
+  item_type?: string
+  is_chemical?: boolean
+  return_required?: boolean
+}
+
+export const createInventoryItem = async (payload: CreateInventoryItemInput): Promise<InventoryItem> =>
+  (await api.post<InventoryItem>('/v1/inventory/items', payload)).data
+
+export interface CreateInventoryTransactionInput {
+  ref_no: string
+  item_id: number
+  requester_id: number
+  quantity: number
+  purpose: string
+}
+
+export const createInventoryTransaction = async (payload: CreateInventoryTransactionInput): Promise<InventoryTransaction> =>
+  (await api.post<InventoryTransaction>('/v1/inventory/transactions', payload)).data
+
+export const decideInventoryTransaction = async (
+  txId: number,
+  payload: { decision: 'APPROVED' | 'REJECTED'; comment?: string },
+): Promise<InventoryTransaction> =>
+  (await api.post<InventoryTransaction>(`/v1/inventory/transactions/${txId}/decision`, payload)).data
+
+export const createCompostBatch = async (payload: {
+  user_id: number
+  batch_code: string
+  start_date?: string
+}): Promise<CompostBatch> =>
+  (await api.post<CompostBatch>('/v1/foodwaste/batches', payload)).data
+
+export interface WasteLogEntry {
+  id: number
+  batch_id: number | null
+  user_id: number
+  weight_kg: number
+  moisture: string
+  carbon_saved_kg: number
+}
+
+export const createWasteLog = async (payload: {
+  batch_id?: number
+  user_id: number
+  weight_kg: number
+  moisture: 'dry' | 'good' | 'wet'
+}): Promise<WasteLogEntry> =>
+  (await api.post<WasteLogEntry>('/v1/foodwaste/logs', payload)).data
+
+export const fetchRecycleAccounts = async (): Promise<BankAccountSummary[]> =>
+  (await api.get<BankAccountSummary[]>('/v1/recycle/accounts')).data
+
+export interface RecyclePurchaseTransaction {
+  id: number
+  org_id: number
+  trans_no: string
+  user_id: number
+  total_weight: number
+  total_amount: number
+  total_points: number
+  status: string
+}
+
+export const recordRecyclePurchase = async (payload: {
+  trans_no: string
+  user_id: number
+  total_weight: number
+  total_amount: number
+  total_points: number
+}): Promise<RecyclePurchaseTransaction> =>
+  (await api.post<RecyclePurchaseTransaction>('/v1/recycle/purchases', payload)).data
+
+export const recordTabwaterReading = async (payload: {
+  inv_no: string
+  meter_id: number
+  period_id: number
+  current_meter: number
+  reserve_fee?: number
+  vat_percent?: number
+}): Promise<WaterInvoice> =>
+  (await api.post<WaterInvoice>('/v1/tabwater/readings', payload)).data
+
+export const payTabwaterInvoice = async (invoiceId: number, cashierId = 1): Promise<WaterInvoice> =>
+  (await api.post<WaterInvoice>(`/v1/tabwater/invoices/${invoiceId}/pay`, { cashier_id: cashierId })).data

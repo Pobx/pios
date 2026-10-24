@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
+  ResidentPage,
   UsersPage,
   InventoryPage,
   FoodWastePage,
@@ -16,12 +17,15 @@ vi.mock('./api', async (importOriginal) => {
     ...actual,
     fetchUsers: vi.fn(),
     fetchZones: vi.fn(),
+    fetchResidentOverview: vi.fn(),
     fetchInventoryItems: vi.fn(),
     fetchInventoryTransactions: vi.fn(),
+    decideInventoryTransaction: vi.fn(),
     fetchFoodWasteSummary: vi.fn(),
     fetchRecycleItems: vi.fn(),
     fetchTabwaterMeters: vi.fn(),
     fetchTabwaterInvoices: vi.fn(),
+    payTabwaterInvoice: vi.fn(),
   }
 })
 
@@ -179,5 +183,52 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
     expect(await screen.findByText('TW-0001')).toBeInTheDocument()
     expect(await screen.findByText('INV-6901-001')).toBeInTheDocument()
     expect(screen.getByText('123.05')).toBeInTheDocument()
+  })
+
+  it('Wave 1.5 ResidentPage renders resident water meters, invoices, and bank accounts', async () => {
+    vi.mocked(modApi.fetchResidentOverview).mockResolvedValue({
+      username: 'user1',
+      org_id: 1,
+      water_meters: [
+        {
+          meter_id: 1,
+          org_id: 1,
+          user_id: 1,
+          meternumber: '000101',
+          submeter_name: '1',
+          meter_address: '8',
+          undertake_zone_id: 1,
+          undertake_subzone_id: 1,
+          status: 'active',
+          owe_count: 0,
+          cutmeter: '0',
+          last_meter_recording: 12,
+        },
+      ],
+      invoices: [
+        {
+          id: 1001,
+          inv_no: '01010001',
+          org_id: 1,
+          meter_id: 1,
+          period_id: 1,
+          period_name: 'ตุลาคม 2569',
+          lastmeter: 0,
+          currentmeter: 12,
+          water_used: 12,
+          paid: 60,
+          reserve_meter: 10,
+          vat: 4.9,
+          totalpaid: 74.9,
+          status: 'invoice',
+        },
+      ],
+      bank_accounts: [],
+    })
+
+    renderWithQC(<ResidentPage />)
+    expect(await screen.findByText('user1')).toBeInTheDocument()
+    expect(await screen.findByText('01010001')).toBeInTheDocument()
+    expect(screen.getByText('74.90')).toBeInTheDocument()
   })
 })

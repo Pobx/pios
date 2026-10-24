@@ -88,6 +88,7 @@ type IdentityRepository interface {
 	ListUsers(ctx context.Context, orgID *int64, query string, limit, offset int) ([]UserSummary, error)
 	ListZones(ctx context.Context, orgID *int64) ([]Zone, error)
 	LinkUserLineAccount(ctx context.Context, orgID *int64, userID int64, lineUserID string) (UserSummary, error)
+	GetResidentOverview(ctx context.Context, orgID *int64, username string) (ResidentOverview, error)
 }
 
 // ---- Wave 2: Inventory Module -----------------------------------------------
@@ -122,6 +123,9 @@ type InventoryTransaction struct {
 type InventoryRepository interface {
 	ListItems(ctx context.Context, orgID *int64) ([]InventoryItem, error)
 	ListTransactions(ctx context.Context, orgID *int64) ([]InventoryTransaction, error)
+	CreateItem(ctx context.Context, orgID int64, cmd CreateInventoryItemCommand) (InventoryItem, error)
+	CreateTransaction(ctx context.Context, orgID int64, cmd CreateInventoryTransactionCommand) (InventoryTransaction, error)
+	DecideTransaction(ctx context.Context, orgID *int64, cmd TransactionDecisionCommand) (InventoryTransaction, error)
 }
 
 // ---- Wave 3: FoodWaste & Carbon Emission Module -----------------------------
@@ -154,6 +158,8 @@ type FoodWasteSummary struct {
 
 type FoodWasteRepository interface {
 	GetSummary(ctx context.Context, orgID *int64) (FoodWasteSummary, error)
+	CreateCompostBatch(ctx context.Context, cmd CreateCompostBatchCommand) (CompostBatch, error)
+	CreateWasteLog(ctx context.Context, cmd CreateWasteLogCommand) (WasteLogEntry, error)
 }
 
 // ---- Wave 4: KeptKaya / Recycle Bank Module ---------------------------------
@@ -173,6 +179,8 @@ type RecycleItem struct {
 
 type RecycleRepository interface {
 	ListRecycleItems(ctx context.Context, orgID *int64) ([]RecycleItem, error)
+	ListBankAccounts(ctx context.Context, orgID *int64) ([]BankAccountSummary, error)
+	RecordPurchase(ctx context.Context, orgID int64, cmd RecordRecyclePurchaseCommand) (RecyclePurchaseTransaction, error)
 }
 
 // ---- Wave 5: Tabwater Module (Meters, Invoices & Progressive Tariff) --------
@@ -288,4 +296,6 @@ func round2(v float64) float64 {
 type TabwaterRepository interface {
 	ListMeters(ctx context.Context, orgID *int64, limit, offset int) ([]WaterMeter, error)
 	ListInvoices(ctx context.Context, orgID *int64, status string, limit, offset int) ([]WaterInvoice, error)
+	RecordMeterReading(ctx context.Context, orgID int64, cmd RecordMeterReadingCommand) (WaterInvoice, error)
+	PayInvoice(ctx context.Context, orgID *int64, cmd PayWaterInvoiceCommand) (WaterInvoice, error)
 }

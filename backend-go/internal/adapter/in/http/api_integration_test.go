@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -680,6 +681,141 @@ func TestAPIIntegration_WaveModules_WithRealPostgres(t *testing.T) {
 		var invoices []map[string]any
 		if err := json.Unmarshal(bodyI, &invoices); err != nil || len(invoices) == 0 {
 			t.Fatalf("expected water invoices from real PostgreSQL, got %s", string(bodyI))
+		}
+	})
+
+	doPOST := func(t *testing.T, path string, bearerToken string, jsonBody string) (*http.Response, []byte) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodPost, env.apiServer.URL+path, strings.NewReader(jsonBody))
+		if err != nil {
+			t.Fatalf("new POST request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if bearerToken != "" {
+			req.Header.Set("Authorization", "Bearer "+bearerToken)
+		}
+		resp, err := env.client.Do(req)
+		if err != nil {
+			t.Fatalf("do POST %s: %v", path, err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp, b
+	}
+
+	t.Run("Wave 1.5 Resident Overview & Write/Approval Workflows across Waves 2 to 5 against real PostgreSQL", func(t *testing.T) {
+		// 1. Resident Portal Overview (role: user)
+		respRes, bodyRes := env.doGET(t, "/api/v1/resident/overview", userTok)
+		if respRes.StatusCode != http.StatusOK {
+			t.Fatalf("GET /resident/overview status = %d: %s", respRes.StatusCode, string(bodyRes))
+		}
+
+		// 2. Inventory CreateItem + CreateTransaction + DecideTransaction (Approve)
+		respItem, bodyItem := doPOST(t, "/api/v1/inventory/items", adminTok, `{"code":"IT-TEST-999","name":"สารส้มทดสอบ","unit":"ถุง","min_stock":5}`)
+		if respItem.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /inventory/items status = %d: %s", respItem.StatusCode, string(bodyItem))
+		}
+		var createdItem struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyItem, &createdItem)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM inv_items WHERE id = $1`, createdItem.ID)
+		})
+
+		respTx, bodyTx := doPOST(t, "/api/v1/inventory/transactions", adminTok, fmt.Sprintf(`{"ref_no":"IT-REQ-999","item_id":%d,"requester_id":1,"quantity":2,"purpose":"ทดสอบเบิก"}`, createdItem.ID))
+		if respTx.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /inventory/transactions status = %d: %s", respTx.StatusCode, string(bodyTx))
+		}
+		var createdTx struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyTx, &createdTx)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM inv_transactions WHERE id = $1`, createdTx.ID)
+		})
+
+		respDec, bodyDec := doPOST(t, fmt.Sprintf("/api/v1/inventory/transactions/%d/decision", createdTx.ID), adminTok, `{"decision":"APPROVED","comment":"อนุมัติทดสอบ"}`)
+		if respDec.StatusCode != http.StatusOK {
+			t.Fatalf("POST /inventory/transactions/:id/decision status = %d: %s", respDec.StatusCode, string(bodyDec))
+		}
+
+		// 3. FoodWaste CreateCompostBatch + CreateWasteLog
+		respBatch, bodyBatch := doPOST(t, "/api/v1/foodwaste/batches", adminTok, `{"user_id":1,"batch_code":"IT-BATCH-999","start_date":"2026-10-24"}`)
+		if respBatch.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /foodwaste/batches status = %d: %s", respBatch.StatusCode, string(bodyBatch))
+		}
+		var createdBatch struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyBatch, &createdBatch)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM foodwaste_compost_batches WHERE id = $1`, createdBatch.ID)
+		})
+
+		respLog, bodyLog := doPOST(t, "/api/v1/foodwaste/logs", adminTok, fmt.Sprintf(`{"batch_id":%d,"user_id":1,"weight_kg":10.0,"moisture":"good"}`, createdBatch.ID))
+		if respLog.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /foodwaste/logs status = %d: %s", respLog.StatusCode, string(bodyLog))
+		}
+		var createdLog struct {
+			ID            int64   `json:"id"`
+			CarbonSavedKg float64 `json:"carbon_saved_kg"`
+		}
+		_ = json.Unmarshal(bodyLog, &createdLog)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM foodwaste_waste_logs WHERE id = $1`, createdLog.ID)
+		})
+		if createdLog.CarbonSavedKg != 25.3 {
+			t.Fatalf("expected carbon_saved_kg=25.3, got %v", createdLog.CarbonSavedKg)
+		}
+
+		// 4. KeptKaya / Recycle Bank ListAccounts + RecordPurchase
+		respAcc, bodyAcc := env.doGET(t, "/api/v1/recycle/accounts", superTok)
+		if respAcc.StatusCode != http.StatusOK {
+			t.Fatalf("GET /recycle/accounts status = %d: %s", respAcc.StatusCode, string(bodyAcc))
+		}
+
+		respPur, bodyPur := doPOST(t, "/api/v1/recycle/purchases", adminTok, `{"trans_no":"IT-KP-999","user_id":1,"total_weight":4.5,"total_amount":36.0,"total_points":45}`)
+		if respPur.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /recycle/purchases status = %d: %s", respPur.StatusCode, string(bodyPur))
+		}
+		var createdPur struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyPur, &createdPur)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM kp_purchase_transactions WHERE id = $1`, createdPur.ID)
+		})
+
+		// 5. Tabwater RecordMeterReading + PayInvoice
+		var origMeterRec int
+		_ = pool.QueryRow(context.Background(), `SELECT COALESCE(last_meter_recording, 0) FROM tw_meter_infos WHERE meter_id = 1`).Scan(&origMeterRec)
+
+		respRead, bodyRead := doPOST(t, "/api/v1/tabwater/readings", adminTok, fmt.Sprintf(`{"inv_no":"IT-INV-999","meter_id":1,"period_id":1,"current_meter":%d,"reserve_fee":10,"vat_percent":7}`, origMeterRec+15))
+		if respRead.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /tabwater/readings status = %d: %s", respRead.StatusCode, string(bodyRead))
+		}
+		var createdInv struct {
+			ID     int64  `json:"id"`
+			Status string `json:"status"`
+		}
+		_ = json.Unmarshal(bodyRead, &createdInv)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `UPDATE tw_meter_infos SET last_meter_recording = $1 WHERE meter_id = 1`, origMeterRec)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM tw_invoice WHERE id = $1`, createdInv.ID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM tw_acc_transactions WHERE meter_id_fk = 1 AND cashier = 1`)
+		})
+
+		respPay, bodyPay := doPOST(t, fmt.Sprintf("/api/v1/tabwater/invoices/%d/pay", createdInv.ID), adminTok, `{"cashier_id":1}`)
+		if respPay.StatusCode != http.StatusOK {
+			t.Fatalf("POST /tabwater/invoices/:id/pay status = %d: %s", respPay.StatusCode, string(bodyPay))
+		}
+		var paidInv struct {
+			Status string `json:"status"`
+		}
+		_ = json.Unmarshal(bodyPay, &paidInv)
+		if paidInv.Status != "paid" {
+			t.Fatalf("expected invoice status 'paid', got %q", paidInv.Status)
 		}
 	})
 }

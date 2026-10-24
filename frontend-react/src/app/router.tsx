@@ -3,6 +3,7 @@ import { ProtectedRoute, RequireRole } from '@/features/auth/ProtectedRoute'
 import { MePage } from '@/features/me/MePage'
 import { OrganizationsPage } from '@/features/organizations/OrganizationsPage'
 import {
+  ResidentPage,
   UsersPage,
   InventoryPage,
   FoodWastePage,
@@ -35,6 +36,7 @@ export function AppRoutes() {
         <Route path="403" element={<ForbiddenPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="me" element={<MePage />} />
+          <Route path="resident" element={<ResidentPage />} />
           <Route element={<RequireRole roles={ORG_ROLES} />}>
             <Route path="organizations" element={<OrganizationsPage />} />
           </Route>

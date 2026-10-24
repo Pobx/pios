@@ -15,6 +15,7 @@ export function Layout() {
           <nav aria-label="Main" className="flex flex-wrap gap-4 text-sm">
             <NavLink to="/" end className={navClass}>Home</NavLink>
             {isAuthenticated && <NavLink to="/me" className={navClass}>Me</NavLink>}
+            {isAuthenticated && <NavLink to="/resident" className={navClass}>Resident Portal</NavLink>}
             <Can roles={['admin', 'super_admin']}>
               <NavLink to="/organizations" className={navClass}>Organizations</NavLink>
             </Can>
