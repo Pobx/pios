@@ -1,0 +1,756 @@
+{
+  "tables": 110,
+  "enums": [
+    {
+      "col": "annual_trash_payrate_permonth.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "annual_trashs.status",
+      "values": [
+        "active",
+        "inactive",
+        "damaged",
+        "removed"
+      ]
+    },
+    {
+      "col": "budget_year.status",
+      "values": [
+        "inactive",
+        "active"
+      ]
+    },
+    {
+      "col": "foodwast_iotboxes.temp_humid_sensor",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "foodwast_iotboxes.gas_sensor",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "foodwast_iotboxes.weight_sensor",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "foodwaste_bin_stocks.bin_type",
+      "values": [
+        "compost",
+        "annual"
+      ]
+    },
+    {
+      "col": "foodwaste_bin_stocks.status",
+      "values": [
+        "active",
+        "pending",
+        "damaged",
+        "removed"
+      ]
+    },
+    {
+      "col": "foodwaste_bins.status",
+      "values": [
+        "active",
+        "inactive",
+        "damaged",
+        "removed"
+      ]
+    },
+    {
+      "col": "foodwaste_compost_batches.status",
+      "values": [
+        "filling",
+        "composting",
+        "ready"
+      ]
+    },
+    {
+      "col": "foodwaste_issue_reports.status",
+      "values": [
+        "pending",
+        "in_progress",
+        "resolved",
+        "cancel"
+      ]
+    },
+    {
+      "col": "foodwaste_waste_logs.moisture",
+      "values": [
+        "dry",
+        "good",
+        "wet"
+      ]
+    },
+    {
+      "col": "inv_item_details.status",
+      "values": [
+        "ACTIVE",
+        "EMPTY",
+        "EXPIRED",
+        "DISPOSED"
+      ]
+    },
+    {
+      "col": "inv_transaction_approvals.status",
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    {
+      "col": "inv_transactions.status",
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        "COMPLETED",
+        "RETURNED",
+        "CANCELLED",
+        "DISPENSED"
+      ]
+    },
+    {
+      "col": "invoice_period.status",
+      "values": [
+        "active",
+        "inactive",
+        "pending"
+      ]
+    },
+    {
+      "col": "kiosk_matches.status",
+      "values": [
+        "pending",
+        "active",
+        "completed",
+        "expired"
+      ]
+    },
+    {
+      "col": "kiosks.status",
+      "values": [
+        "idle",
+        "active",
+        "maintenance",
+        "offline"
+      ]
+    },
+    {
+      "col": "kp_bank_accounts.entity_type",
+      "values": [
+        "recycle_bank",
+        "foodwaste_bank",
+        "org_recycle_bank",
+        "org_foodwaste_bank",
+        "org_tabwater_bank"
+      ]
+    },
+    {
+      "col": "kp_bank_accounts.status",
+      "values": [
+        "active",
+        "inactive",
+        "suspended"
+      ]
+    },
+    {
+      "col": "kp_money_requests.hold_status",
+      "values": [
+        "held",
+        "released",
+        "settled"
+      ]
+    },
+    {
+      "col": "kp_money_requests.payout_method",
+      "values": [
+        "cash",
+        "transfer"
+      ]
+    },
+    {
+      "col": "kp_purchase_routes.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_purchase_shops.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_shop_order_details.order_type",
+      "values": [
+        "points",
+        "cash"
+      ]
+    },
+    {
+      "col": "kp_shop_order_details.status",
+      "values": [
+        "pending",
+        "complete",
+        "cancled"
+      ]
+    },
+    {
+      "col": "kp_shop_orders.order_type",
+      "values": [
+        "points",
+        "cash"
+      ]
+    },
+    {
+      "col": "kp_shop_orders.order_status",
+      "values": [
+        "pending",
+        "processing",
+        "completed",
+        "cancelled"
+      ]
+    },
+    {
+      "col": "kp_tbank_items.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_tbank_items.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_groups.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_groups.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_pricepoint.type",
+      "values": [
+        "tbank",
+        "tbox"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_pricepoint.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_pricepoint.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_units.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "kp_tbank_items_units.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "kp_usergroups.status",
+      "values": [
+        "active",
+        "invactive"
+      ]
+    },
+    {
+      "col": "kp_usergroups.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "kp_waste_bank_transactions.status",
+      "values": [
+        "completed",
+        "pending",
+        "cancelled"
+      ]
+    },
+    {
+      "col": "kp_withdraw_batches.status",
+      "values": [
+        "draft",
+        "in_review",
+        "approved",
+        "rejected",
+        "completed"
+      ]
+    },
+    {
+      "col": "machines.buycomplete",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "machines.status",
+      "values": [
+        "wakeup",
+        "pending_login",
+        "object_detected",
+        "ready",
+        "active_session",
+        "sleep"
+      ]
+    },
+    {
+      "col": "meal_items.status",
+      "values": [
+        "verified",
+        "pending_review"
+      ]
+    },
+    {
+      "col": "recycle_transactions.type",
+      "values": [
+        "deposit",
+        "withdraw"
+      ]
+    },
+    {
+      "col": "staffs.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "staffs.deleted",
+      "values": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "col": "subzones.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    {
+      "col": "transaction_approvals.status",
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    {
+      "col": "tw_acc_transactions.status",
+      "values": [
+        "1",
+        "0"
+      ]
+    },
+    {
+      "col": "tw_cutmeter.status",
+      "values": [
+        "pending",
+        "cutmeter",
+        "install",
+        "complete",
+        "cancel"
+      ]
+    },
+    {
+      "col": "tw_invoice.inv_type",
+      "values": [
+        "r",
+        "u"
+      ]
+    },
+    {
+      "col": "tw_invoice.status",
+      "values": [
+        "init",
+        "invoice",
+        "paid",
+        "owe",
+        "deleted"
+      ]
+    },
+    {
+      "col": "tw_invoice_history.inv_type",
+      "values": [
+        "r",
+        "u"
+      ]
+    },
+    {
+      "col": "tw_invoice_history.status",
+      "values": [
+        "init",
+        "invoice",
+        "paid",
+        "owe",
+        "deleted"
+      ]
+    },
+    {
+      "col": "tw_invoice_temp.inv_type",
+      "values": [
+        "r",
+        "u"
+      ]
+    },
+    {
+      "col": "tw_invoice_temp.status",
+      "values": [
+        "init",
+        "invoice",
+        "paid",
+        "owe",
+        "deleted"
+      ]
+    },
+    {
+      "col": "tw_meter_infos.status",
+      "values": [
+        "active",
+        "inactive",
+        "deleted"
+      ]
+    },
+    {
+      "col": "tw_meter_infos.cutmeter",
+      "values": [
+        "1",
+        "0"
+      ]
+    },
+    {
+      "col": "tw_notifies.status",
+      "values": [
+        "pending",
+        "processing",
+        "complete",
+        "cancel"
+      ]
+    },
+    {
+      "col": "tw_notify_staff.staff_status",
+      "values": [
+        "accepted",
+        "working",
+        "completed",
+        "rejected"
+      ]
+    },
+    {
+      "col": "user_meter_infos.status",
+      "values": [
+        "active",
+        "inactive",
+        "changemeter",
+        "deleted",
+        "cutmeter",
+        "permanent deleted"
+      ]
+    },
+    {
+      "col": "users.gender",
+      "values": [
+        "m",
+        "w"
+      ]
+    },
+    {
+      "col": "users.status",
+      "values": [
+        "active",
+        "inactive",
+        "deleted"
+      ]
+    },
+    {
+      "col": "zones.status",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    }
+  ],
+  "floats": [
+    "accounts.deposit",
+    "annual_trash_payrate_permonth.payrate_permonth",
+    "annual_trash_payrate_permonth.vat",
+    "kp_tbank_items_pricepoint.price_from_dealer",
+    "kp_tbank_items_pricepoint.price_for_member",
+    "org_accounts.tabwater_balance",
+    "org_accounts.annaul_balance",
+    "org_accounts.recycle_bank_balance",
+    "organizations.vat",
+    "tw_acc_transactions.paidsum",
+    "tw_acc_transactions.vatsum",
+    "tw_acc_transactions.reserve_meter_sum",
+    "tw_acc_transactions.totalpaidsum",
+    "tw_invoice.lastmeter",
+    "tw_invoice.currentmeter",
+    "tw_invoice.water_used",
+    "tw_invoice.paid",
+    "tw_invoice.reserve_meter",
+    "tw_invoice.vat",
+    "tw_invoice.totalpaid",
+    "tw_invoice_history.lastmeter",
+    "tw_invoice_history.currentmeter",
+    "tw_invoice_history.water_used",
+    "tw_invoice_history.paid",
+    "tw_invoice_history.reserve_meter",
+    "tw_invoice_history.vat",
+    "tw_invoice_history.totalpaid",
+    "tw_invoice_temp.lastmeter",
+    "tw_invoice_temp.currentmeter",
+    "tw_invoice_temp.water_used",
+    "tw_invoice_temp.paid",
+    "tw_invoice_temp.reserve_meter",
+    "tw_invoice_temp.vat",
+    "tw_invoice_temp.totalpaid",
+    "tw_meter_type_rate_configs.min_usage_charge",
+    "tw_meter_type_rate_configs.vat",
+    "tw_meter_type_rate_configs.fixed_rate_per_unit",
+    "tw_meter_type_rate_tiers.rate_per_unit"
+  ],
+  "booleans": [
+    "annual_trashs.is_active_for_annual_collection",
+    "approval_workflows.is_active",
+    "foodwaste_issue_types.is_active",
+    "foodwaste_user_preferences.status",
+    "foodwaste_waste_logs.is_mixed",
+    "foodwaste_waste_logs.is_verified",
+    "inv_items.is_chemical",
+    "inv_items.return_required",
+    "issue_types.is_active",
+    "issue_types.is_suggested",
+    "kp_money_requests.is_proxy",
+    "kp_user_waste_preferences.is_annual_collection",
+    "kp_user_waste_preferences.is_recycle_bank",
+    "kp_waste_types.is_recyclable",
+    "machines.machine_ready",
+    "organization_types.status",
+    "system_modules.is_active",
+    "tw_meter_type_rate_configs.is_active"
+  ],
+  "on_update_triggers": [
+    "kiosk_matches.expires_at"
+  ],
+  "renamed_org_id": [
+    "budget_year",
+    "food_waste_accounts",
+    "foodwaste_bin_stocks",
+    "foodwaste_issue_types",
+    "foodwaste_user_preferences",
+    "inv_categories",
+    "inv_hazard_levels",
+    "inv_items",
+    "inv_locations",
+    "inv_transactions",
+    "inv_units",
+    "invoice_period",
+    "kiosks",
+    "kp_bank_accounts",
+    "kp_bulk_sales",
+    "kp_kiosk_unknown_items",
+    "kp_money_requests",
+    "kp_purchase_routes",
+    "kp_purchase_shops",
+    "kp_purchase_transactions",
+    "kp_purchase_transactions_details",
+    "kp_sell_details",
+    "kp_sell_transactions",
+    "kp_settings",
+    "kp_tbank_items",
+    "kp_tbank_items_groups",
+    "kp_tbank_items_pricepoint",
+    "kp_tbank_items_units",
+    "kp_user_waste_preferences",
+    "kp_welfare_configs",
+    "kp_welfare_payouts",
+    "kp_withdraw_batches",
+    "machines",
+    "sequence_number",
+    "staffs",
+    "subzones",
+    "suppliers",
+    "tw_acc_transactions",
+    "tw_invoice",
+    "tw_invoice_history",
+    "tw_meter_infos",
+    "tw_meter_type_rate_configs",
+    "tw_meter_types",
+    "tw_notifies",
+    "undertaker_subzones",
+    "users",
+    "zones"
+  ],
+  "tables_with_org_id": [
+    "budget_year",
+    "food_waste_accounts",
+    "foodwaste_bin_stocks",
+    "foodwaste_issue_types",
+    "foodwaste_user_preferences",
+    "inv_categories",
+    "inv_hazard_levels",
+    "inv_items",
+    "inv_locations",
+    "inv_transactions",
+    "inv_units",
+    "invoice_period",
+    "kiosks",
+    "kp_bank_accounts",
+    "kp_bulk_sales",
+    "kp_kiosk_unknown_items",
+    "kp_money_requests",
+    "kp_purchase_routes",
+    "kp_purchase_shops",
+    "kp_purchase_transactions",
+    "kp_purchase_transactions_details",
+    "kp_sell_details",
+    "kp_sell_transactions",
+    "kp_settings",
+    "kp_tbank_items",
+    "kp_tbank_items_groups",
+    "kp_tbank_items_pricepoint",
+    "kp_tbank_items_units",
+    "kp_user_waste_preferences",
+    "kp_welfare_configs",
+    "kp_welfare_payouts",
+    "kp_withdraw_batches",
+    "machines",
+    "sequence_number",
+    "staffs",
+    "subzones",
+    "suppliers",
+    "tw_acc_transactions",
+    "tw_invoice",
+    "tw_invoice_history",
+    "tw_meter_infos",
+    "tw_meter_type_rate_configs",
+    "tw_meter_types",
+    "tw_notifies",
+    "undertaker_subzones",
+    "users",
+    "zones"
+  ],
+  "tables_without_org_id": [
+    "accounts",
+    "annual_trash_payments",
+    "annual_trash_payrate_permonth",
+    "annual_trash_subscriptions",
+    "annual_trashs",
+    "approval_workflow_steps",
+    "approval_workflows",
+    "compost_bins",
+    "cp_sensor_data",
+    "districts",
+    "emission_factors",
+    "failed_jobs",
+    "foodwast_iotboxes",
+    "foodwast_meal_logs",
+    "foodwaste_bins",
+    "foodwaste_compost_batches",
+    "foodwaste_issue_reports",
+    "foodwaste_reward_settings",
+    "foodwaste_transactions",
+    "foodwaste_user_bin_iotbox_matchings",
+    "foodwaste_waste_logs",
+    "inv_item_details",
+    "inv_item_hazard",
+    "inv_transaction_approvals",
+    "issue_types",
+    "kiosk_matches",
+    "kp_bulk_sale_details",
+    "kp_point_transfers",
+    "kp_purchase_route_zones",
+    "kp_shop_categories",
+    "kp_shop_order_details",
+    "kp_shop_orders",
+    "kp_shop_products",
+    "kp_usergroups",
+    "kp_waste_bank_transactions",
+    "kp_waste_groups",
+    "kp_waste_types",
+    "local_foods",
+    "meal_items",
+    "migrations",
+    "model_has_permissions",
+    "model_has_roles",
+    "org_accounts",
+    "organization_types",
+    "organizations",
+    "password_resets",
+    "permissions",
+    "personal_access_tokens",
+    "provinces",
+    "recycle_transactions",
+    "role_has_permissions",
+    "roles",
+    "settings",
+    "system_modules",
+    "tambons",
+    "transaction_approvals",
+    "transaction_details",
+    "tw_cutmeter",
+    "tw_invoice_temp",
+    "tw_meter_type_rate_tiers",
+    "tw_notify_staff",
+    "tw_pricing_types",
+    "user_meter_infos"
+  ],
+  "fks": 137,
+  "unsigned_widened": 2,
+  "no_primary_key": [
+    "password_resets"
+  ],
+  "synthesized_unique": [
+    "tambons(id)"
+  ]
+}
