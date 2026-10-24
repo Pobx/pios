@@ -6,23 +6,48 @@ import { fetchMe } from './api'
 export function MePage() {
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   return (
-    <section>
-      <h1 className="mb-4 text-2xl font-semibold">My profile</h1>
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-600/15">
+            OIDC Identity Claims
+          </span>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">My profile</h1>
+          <p className="text-sm text-slate-500">ข้อมูลบัญชีผู้ใช้งานและสิทธิ์การเข้าถึงระดับองค์กร (Keycloak RS256)</p>
+        </div>
+      </div>
+
       {isPending && <Spinner />}
       {error && <ErrorMessage error={error} onRetry={() => void refetch()} />}
       {data && (
-        <>
-          <dl className="grid max-w-lg grid-cols-[8rem_1fr] gap-y-2 rounded bg-white p-4 shadow">
-            <dt className="text-slate-500">Username</dt><dd>{data.username}</dd>
-            <dt className="text-slate-500">Subject</dt><dd className="break-all">{data.sub}</dd>
-            <dt className="text-slate-500">Roles</dt><dd>{data.roles.join(', ') || '—'}</dd>
-            <dt className="text-slate-500">Org ID</dt><dd>{data.org_id ?? '—'}</dd>
-          </dl>
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-slate-600">Raw response</summary>
-            <pre className="mt-2 overflow-auto rounded bg-slate-900 p-3 text-xs text-slate-100">{JSON.stringify(data, null, 2)}</pre>
-          </details>
-        </>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs lg:col-span-2">
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-400">Account Details</h2>
+            <dl className="grid grid-cols-1 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
+              <dt className="font-medium text-slate-500">Username</dt>
+              <dd className="font-semibold text-slate-900">{data.username}</dd>
+              <dt className="font-medium text-slate-500">Subject</dt>
+              <dd className="break-all font-mono text-xs text-slate-700">{data.sub}</dd>
+              <dt className="font-medium text-slate-500">Roles</dt>
+              <dd className="font-medium text-blue-700">{data.roles.join(', ') || '—'}</dd>
+              <dt className="font-medium text-slate-500">Org ID</dt>
+              <dd className="font-mono font-semibold text-slate-900">{data.org_id ?? '—'}</dd>
+            </dl>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">Token Inspector</h2>
+            <p className="mb-4 text-xs text-slate-500">ตรวจสอบข้อมูลดิบที่ได้จาก `/api/v1/me`</p>
+            <details className="group">
+              <summary className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                Raw response
+              </summary>
+              <pre className="mt-3 overflow-auto rounded-xl bg-slate-900 p-4 font-mono text-xs text-emerald-300 shadow-inner">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </details>
+          </div>
+        </div>
       )}
     </section>
   )

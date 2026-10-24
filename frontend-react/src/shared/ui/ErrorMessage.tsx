@@ -11,11 +11,19 @@ function errorText(error: unknown): string {
 
 export function ErrorMessage({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">
-      <p className="font-medium">Something went wrong</p>
-      <p className="text-sm">{errorText(error)}</p>
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50/90 p-5 text-rose-900 shadow-xs"
+    >
+      <div className="space-y-1">
+        <p className="font-semibold text-rose-900">Something went wrong</p>
+        <p className="text-sm text-rose-700">{errorText(error)}</p>
+      </div>
       {onRetry && (
-        <button className="mt-3 rounded bg-red-700 px-3 py-1 text-white" onClick={onRetry}>
+        <button
+          className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-rose-700"
+          onClick={onRetry}
+        >
           Retry
         </button>
       )}
