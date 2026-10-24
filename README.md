@@ -33,9 +33,9 @@ docker compose -f deploy/docker-compose.yml up -d --build --wait
 ### Default Accounts (`realm: otp`)
 | Username | Password | Role | Tenant (`org_id`) |
 |---|---|---|---|
-| `super1` | `password` | `super_admin` | All organizations (`null`) |
-| `admin1` | `password` | `admin` | `1` (HSG1 — ห้องแซง) |
-| `user1` | `password` | `user` | `1` (HSG1 — ห้องแซง) |
+| `super1` | `super1` | `super_admin` | All organizations (`null`) |
+| `admin1` | `admin1` | `admin` | `1` (HSG1 — ห้องแซง) |
+| `user1` | `user1` | `user` | `1` (HSG1 — ห้องแซง) |
 | `user2` | `password` | `user` (Migrated Resident) | `1` (HSG1 — สมใจ พูลสวัสดิ์) |
 
 ---
