@@ -1,0 +1,11 @@
+.env
+deploy/.env
+.DS_Store
+# Production DB dump contains real personal data (users etc.) - never commit
+docs/*.sql
+*.sql.gz
+# build outputs
+backend-go/bin/
+backend-go/tmp/
+frontend-react/node_modules/
+frontend-react/dist/
