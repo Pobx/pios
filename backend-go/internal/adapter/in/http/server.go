@@ -20,6 +20,11 @@ const claimsContextKey = "auth.claims"
 type Deps struct {
 	Verifier           app.TokenVerifier
 	Organizations      *app.OrganizationService
+	Identity           *app.IdentityService
+	Inventory          *app.InventoryService
+	FoodWaste          *app.FoodWasteService
+	Recycle            *app.RecycleService
+	Tabwater           *app.TabwaterService
 	Health             app.HealthChecker
 	CORSAllowedOrigins []string
 }
@@ -35,12 +40,17 @@ func NewServer(deps Deps) *echo.Echo {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: deps.CORSAllowedOrigins,
 			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
-			AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+			AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Org-Id"},
 		}))
 	}
 
 	h := &handler{
 		organizations: deps.Organizations,
+		identity:      deps.Identity,
+		inventory:     deps.Inventory,
+		foodwaste:     deps.FoodWaste,
+		recycle:       deps.Recycle,
+		tabwater:      deps.Tabwater,
 		health:        deps.Health,
 	}
 
@@ -51,11 +61,18 @@ func NewServer(deps Deps) *echo.Echo {
 	v1.GET("/me", h.me)
 	v1.GET("/organizations", h.listOrganizations, requireAnyRole(domain.RoleAdmin, domain.RoleSuperAdmin))
 
+	registerModuleRoutes(v1, h)
+
 	return e
 }
 
 type handler struct {
 	organizations *app.OrganizationService
+	identity      *app.IdentityService
+	inventory     *app.InventoryService
+	foodwaste     *app.FoodWasteService
+	recycle       *app.RecycleService
+	tabwater      *app.TabwaterService
 	health        app.HealthChecker
 }
 
@@ -183,6 +200,8 @@ func getClaims(c echo.Context) (domain.Claims, bool) {
 
 func mapError(c echo.Context, err error) error {
 	switch {
+	case errors.Is(err, domain.ErrBadRequest):
+		return writeProblem(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, domain.ErrUnauthorized):
 		return writeProblem(c, http.StatusUnauthorized, err.Error())
 	case errors.Is(err, domain.ErrForbidden):

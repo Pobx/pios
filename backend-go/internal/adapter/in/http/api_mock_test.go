@@ -323,3 +323,143 @@ func TestAPIMock_AllEndpointsAndInteractions(t *testing.T) {
 		}
 	})
 }
+
+type mockAllModulesRepo struct {
+	users        []domain.UserSummary
+	zones        []domain.Zone
+	invItems     []domain.InventoryItem
+	invTxs       []domain.InventoryTransaction
+	fwSummary    domain.FoodWasteSummary
+	recycleItems []domain.RecycleItem
+	meters       []domain.WaterMeter
+	invoices     []domain.WaterInvoice
+	err          error
+}
+
+func (m *mockAllModulesRepo) ListUsers(context.Context, *int64, string, int, int) ([]domain.UserSummary, error) {
+	return m.users, m.err
+}
+func (m *mockAllModulesRepo) ListZones(context.Context, *int64) ([]domain.Zone, error) {
+	return m.zones, m.err
+}
+func (m *mockAllModulesRepo) LinkUserLineAccount(_ context.Context, orgID *int64, userID int64, lineUserID string) (domain.UserSummary, error) {
+	if m.err != nil {
+		return domain.UserSummary{}, m.err
+	}
+	return domain.UserSummary{ID: userID, OrgID: orgID, Username: "linked_user", LineUserID: lineUserID}, nil
+}
+func (m *mockAllModulesRepo) ListItems(context.Context, *int64) ([]domain.InventoryItem, error) {
+	return m.invItems, m.err
+}
+func (m *mockAllModulesRepo) ListTransactions(context.Context, *int64) ([]domain.InventoryTransaction, error) {
+	return m.invTxs, m.err
+}
+func (m *mockAllModulesRepo) GetSummary(context.Context, *int64) (domain.FoodWasteSummary, error) {
+	return m.fwSummary, m.err
+}
+func (m *mockAllModulesRepo) ListRecycleItems(context.Context, *int64) ([]domain.RecycleItem, error) {
+	return m.recycleItems, m.err
+}
+func (m *mockAllModulesRepo) ListMeters(context.Context, *int64, int, int) ([]domain.WaterMeter, error) {
+	return m.meters, m.err
+}
+func (m *mockAllModulesRepo) ListInvoices(context.Context, *int64, string, int, int) ([]domain.WaterInvoice, error) {
+	return m.invoices, m.err
+}
+
+func TestAPIMock_WaveModules(t *testing.T) {
+	org1 := int64(1)
+	verifier := &MockTokenVerifier{
+		VerifyFn: func(_ context.Context, rawToken string) (domain.Claims, error) {
+			switch rawToken {
+			case "admin-tok":
+				return domain.Claims{Subject: "sub-admin", Username: "admin1", Roles: []string{domain.RoleAdmin}, OrgID: &org1}, nil
+			case "super-tok":
+				return domain.Claims{Subject: "sub-super", Username: "super1", Roles: []string{domain.RoleSuperAdmin}}, nil
+			case "user-tok":
+				return domain.Claims{Subject: "sub-user", Username: "user1", Roles: []string{domain.RoleUser}, OrgID: &org1}, nil
+			default:
+				return domain.Claims{}, domain.ErrUnauthorized
+			}
+		},
+	}
+
+	mockRepo := &mockAllModulesRepo{
+		users:        []domain.UserSummary{{ID: 10, OrgID: &org1, Username: "somchai", FirstName: "สมชาย"}},
+		zones:        []domain.Zone{{ID: 1, OrgID: &org1, Name: "หมู่ 1", Subzones: []domain.Subzone{}}},
+		invItems:     []domain.InventoryItem{{ID: 1, OrgID: 1, Code: "INV-001", Name: "คลอรีนผง"}},
+		invTxs:       []domain.InventoryTransaction{{ID: 1, OrgID: 1, RefNo: "TX-2026-01", Quantity: 5, Status: "approved"}},
+		fwSummary:    domain.FoodWasteSummary{TotalBatches: 3, TotalWasteLogs: 12, TotalWeightKg: 45.5, TotalCarbonSavedKg: 18.2},
+		recycleItems: []domain.RecycleItem{{ID: 1, OrgID: 1, Code: "KP-01", Name: "ขวดพลาสติกใส PET", PriceForMember: 8.5, Point: 10}},
+		meters:       []domain.WaterMeter{{MeterID: 101, OrgID: 1, MeterNumber: "M-0101", SubmeterName: "สมชาย ใจดี", Status: "active"}},
+		invoices:     []domain.WaterInvoice{{ID: 5001, InvoiceNo: "INV-5001", OrgID: 1, MeterID: 101, WaterUsed: 15, TotalPaid: 120, Status: "paid"}},
+	}
+
+	srv := httpadapter.NewServer(httpadapter.Deps{
+		Verifier:      verifier,
+		Organizations: app.NewOrganizationService(&MockOrganizationRepository{}),
+		Identity:      app.NewIdentityService(mockRepo),
+		Inventory:     app.NewInventoryService(mockRepo),
+		FoodWaste:     app.NewFoodWasteService(mockRepo),
+		Recycle:       app.NewRecycleService(mockRepo),
+		Tabwater:      app.NewTabwaterService(mockRepo),
+		Health:        &MockHealthPinger{},
+	})
+
+	endpoints := []string{
+		"/api/v1/users?limit=10&offset=0&q=somchai",
+		"/api/v1/zones",
+		"/api/v1/inventory/items",
+		"/api/v1/inventory/transactions",
+		"/api/v1/foodwaste/summary",
+		"/api/v1/recycle/items",
+		"/api/v1/tabwater/meters?limit=10&offset=0",
+		"/api/v1/tabwater/invoices?limit=10&offset=0&status=paid",
+	}
+
+	for _, ep := range endpoints {
+		t.Run("GET "+ep+" returns 200 for admin and 403 for user role", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, ep, nil)
+			req.Header.Set("Authorization", "Bearer admin-tok")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET %s as admin: status = %d, body = %s", ep, rec.Code, rec.Body.String())
+			}
+
+			reqForbidden := httptest.NewRequest(http.MethodGet, ep, nil)
+			reqForbidden.Header.Set("Authorization", "Bearer user-tok")
+			recForbidden := httptest.NewRecorder()
+			srv.ServeHTTP(recForbidden, reqForbidden)
+			assertProblem(t, recForbidden, http.StatusForbidden)
+		})
+	}
+
+	t.Run("Cross-tenant X-Org-Id spoofing by org-scoped admin is blocked with 403 RFC7807", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/tabwater/meters", nil)
+		req.Header.Set("Authorization", "Bearer admin-tok")
+		req.Header.Set("X-Org-Id", "2")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		assertProblem(t, rec, http.StatusForbidden)
+	})
+
+	t.Run("Invalid X-Org-Id header returns 400 Bad Request RFC7807", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
+		req.Header.Set("Authorization", "Bearer super-tok")
+		req.Header.Set("X-Org-Id", "not-a-number")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		assertProblem(t, rec, http.StatusBadRequest)
+	})
+
+	t.Run("POST /api/v1/users/:id/link-line links LINE account with staff verification code", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/users/10/link-line", nil)
+		req.Header.Set("Authorization", "Bearer admin-tok")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		// Empty body -> 400 Bad Request
+		srv.ServeHTTP(rec, req)
+		assertProblem(t, rec, http.StatusBadRequest)
+	})
+}

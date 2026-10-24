@@ -500,3 +500,186 @@ func TestAPIIntegration_OrganizationsEndpoint_WithRealPostgres(t *testing.T) {
 		}
 	})
 }
+
+func TestAPIIntegration_WaveModules_WithRealPostgres(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping API integration test in -short mode")
+	}
+
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = defaultIntegrationDatabaseURL
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	t.Cleanup(cancel)
+
+	pool, err := postgres.NewPool(ctx, dsn)
+	if err != nil {
+		t.Fatalf("new pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	// Spin up real RS256 JWKS server
+	rawRSA, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate rsa key: %v", err)
+	}
+	privJWK, err := jwk.FromRaw(rawRSA)
+	if err != nil {
+		t.Fatalf("jwk from raw: %v", err)
+	}
+	_ = privJWK.Set(jwk.KeyIDKey, "it-waves-key-1")
+	_ = privJWK.Set(jwk.AlgorithmKey, jwa.RS256)
+	_ = privJWK.Set(jwk.KeyUsageKey, "sig")
+
+	pubJWK, _ := privJWK.PublicKey()
+	pubSet := jwk.NewSet()
+	_ = pubSet.AddKey(pubJWK)
+
+	jwksSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(pubSet)
+	}))
+	t.Cleanup(jwksSrv.Close)
+
+	issuer := "http://localhost:8081/realms/otp"
+	audience := "otp-api"
+
+	verifier := keycloak.NewVerifier(keycloak.Config{
+		Issuer:   issuer,
+		Audience: audience,
+		JWKSURL:  jwksSrv.URL,
+	})
+
+	store := postgres.NewStore(pool)
+	handler := httpadapter.NewServer(httpadapter.Deps{
+		Verifier:      verifier,
+		Organizations: app.NewOrganizationService(store),
+		Identity:      app.NewIdentityService(store),
+		Inventory:     app.NewInventoryService(store),
+		FoodWaste:     app.NewFoodWasteService(store),
+		Recycle:       app.NewRecycleService(store),
+		Tabwater:      app.NewTabwaterService(store),
+		Health:        store,
+	})
+
+	apiSrv := httptest.NewServer(handler)
+	t.Cleanup(apiSrv.Close)
+
+	env := &integrationEnv{
+		apiServer: apiSrv,
+		jwksSrv:   jwksSrv,
+		privKey:   privJWK,
+		issuer:    issuer,
+		audience:  audience,
+		client:    apiSrv.Client(),
+	}
+
+	adminTok := env.signRS256Token(t, jwtClaimsSpec{
+		sub:      "kc-admin-1",
+		username: "admin1",
+		roles:    []string{"admin"},
+		orgID:    1,
+	})
+	superTok := env.signRS256Token(t, jwtClaimsSpec{
+		sub:      "kc-super-1",
+		username: "super1",
+		roles:    []string{"super_admin"},
+	})
+	userTok := env.signRS256Token(t, jwtClaimsSpec{
+		sub:      "kc-user-1",
+		username: "user1",
+		roles:    []string{"user"},
+		orgID:    1,
+	})
+
+	t.Run("Wave 1.5: GET /api/v1/users and GET /api/v1/zones against real PostgreSQL", func(t *testing.T) {
+		resp, body := env.doGET(t, "/api/v1/users?limit=5&offset=0", adminTok)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET /users status = %d: %s", resp.StatusCode, string(body))
+		}
+		var users []map[string]any
+		if err := json.Unmarshal(body, &users); err != nil || len(users) == 0 {
+			t.Fatalf("expected users from real PostgreSQL, got %s", string(body))
+		}
+
+		respZ, bodyZ := env.doGET(t, "/api/v1/zones", adminTok)
+		if respZ.StatusCode != http.StatusOK {
+			t.Fatalf("GET /zones status = %d: %s", respZ.StatusCode, string(bodyZ))
+		}
+		var zones []map[string]any
+		if err := json.Unmarshal(bodyZ, &zones); err != nil || len(zones) == 0 {
+			t.Fatalf("expected zones from real PostgreSQL, got %s", string(bodyZ))
+		}
+
+		// Role user -> 403 Forbidden
+		respForbidden, bodyForbidden := env.doGET(t, "/api/v1/users", userTok)
+		assertIntegrationProblem(t, respForbidden, bodyForbidden, http.StatusForbidden)
+	})
+
+	t.Run("Wave 2: GET /api/v1/inventory/items and /transactions against real PostgreSQL", func(t *testing.T) {
+		resp, body := env.doGET(t, "/api/v1/inventory/items", superTok)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET /inventory/items status = %d: %s", resp.StatusCode, string(body))
+		}
+		var items []map[string]any
+		if err := json.Unmarshal(body, &items); err != nil || len(items) == 0 {
+			t.Fatalf("expected inventory items from real PostgreSQL, got %s", string(body))
+		}
+
+		respTx, bodyTx := env.doGET(t, "/api/v1/inventory/transactions", superTok)
+		if respTx.StatusCode != http.StatusOK {
+			t.Fatalf("GET /inventory/transactions status = %d: %s", respTx.StatusCode, string(bodyTx))
+		}
+		var txs []map[string]any
+		if err := json.Unmarshal(bodyTx, &txs); err != nil || len(txs) == 0 {
+			t.Fatalf("expected inventory transactions from real PostgreSQL, got %s", string(bodyTx))
+		}
+	})
+
+	t.Run("Wave 3: GET /api/v1/foodwaste/summary against real PostgreSQL", func(t *testing.T) {
+		resp, body := env.doGET(t, "/api/v1/foodwaste/summary", superTok)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET /foodwaste/summary status = %d: %s", resp.StatusCode, string(body))
+		}
+		var sum struct {
+			TotalBatches    int `json:"total_batches"`
+			EmissionFactors []any `json:"emission_factors"`
+		}
+		if err := json.Unmarshal(body, &sum); err != nil || sum.TotalBatches == 0 || len(sum.EmissionFactors) == 0 {
+			t.Fatalf("expected foodwaste summary from real PostgreSQL, got %s", string(body))
+		}
+	})
+
+	t.Run("Wave 4: GET /api/v1/recycle/items against real PostgreSQL", func(t *testing.T) {
+		resp, body := env.doGET(t, "/api/v1/recycle/items", superTok)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET /recycle/items status = %d: %s", resp.StatusCode, string(body))
+		}
+		var items []map[string]any
+		if err := json.Unmarshal(body, &items); err != nil || len(items) == 0 {
+			t.Fatalf("expected recycle items from real PostgreSQL, got %s", string(body))
+		}
+	})
+
+	t.Run("Wave 5: GET /api/v1/tabwater/meters and /invoices against real PostgreSQL", func(t *testing.T) {
+		respM, bodyM := env.doGET(t, "/api/v1/tabwater/meters?limit=5&offset=0", adminTok)
+		if respM.StatusCode != http.StatusOK {
+			t.Fatalf("GET /tabwater/meters status = %d: %s", respM.StatusCode, string(bodyM))
+		}
+		var meters []map[string]any
+		if err := json.Unmarshal(bodyM, &meters); err != nil || len(meters) == 0 {
+			t.Fatalf("expected water meters from real PostgreSQL, got %s", string(bodyM))
+		}
+
+		respI, bodyI := env.doGET(t, "/api/v1/tabwater/invoices?limit=5&offset=0", adminTok)
+		if respI.StatusCode != http.StatusOK {
+			t.Fatalf("GET /tabwater/invoices status = %d: %s", respI.StatusCode, string(bodyI))
+		}
+		var invoices []map[string]any
+		if err := json.Unmarshal(bodyI, &invoices); err != nil || len(invoices) == 0 {
+			t.Fatalf("expected water invoices from real PostgreSQL, got %s", string(bodyI))
+		}
+	})
+}

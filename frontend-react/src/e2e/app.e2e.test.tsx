@@ -259,4 +259,146 @@ describe('Full-App E2E User Journeys with Mock OIDC & API', () => {
     await user.click(screen.getByRole('button', { name: /retry/i }))
     expect(await screen.findByText('HSG1')).toBeInTheDocument()
   })
+
+  it('E2E Journey 6 (All Business Waves 1.5 to 5): navigates Users -> Inventory -> FoodWaste -> Recycle Bank -> Tabwater', async () => {
+    const user = userEvent.setup()
+    renderAppE2E({
+      initialPath: '/users',
+      accessToken: 'jwt-admin-all-waves',
+      auth: {
+        isAuthenticated: true,
+        user: { username: 'admin1', roles: ['admin'], orgId: 1 },
+      },
+      apiHandler: async (req) => {
+        switch (req.url) {
+          case '/v1/users':
+            return {
+              status: 200,
+              data: [
+                {
+                  id: 101,
+                  org_id: 1,
+                  username: 'somchai_hs1',
+                  prefix: 'นาย',
+                  firstname: 'สมชาย',
+                  lastname: 'ห้องแซง',
+                  email: '',
+                  phone: '0811112222',
+                  address: '',
+                  zone_id: 1,
+                  subzone_id: 1,
+                  line_user_id: 'U999',
+                  status: 'active',
+                },
+              ],
+            }
+          case '/v1/zones':
+            return {
+              status: 200,
+              data: [{ id: 1, org_id: 1, zone_name: 'หมู่ 1 ห้องแซง', status: 'active', subzones: [] }],
+            }
+          case '/v1/inventory/items':
+            return {
+              status: 200,
+              data: [
+                {
+                  id: 1,
+                  org_id: 1,
+                  category_id: 1,
+                  category_name: 'เคมีภัณฑ์',
+                  code: 'INV-001',
+                  name: 'สารส้มก้อน',
+                  unit: 'กระสอบ',
+                  min_stock: 10,
+                  item_type: 'consumable',
+                  is_chemical: true,
+                  return_required: false,
+                },
+              ],
+            }
+          case '/v1/inventory/transactions':
+            return { status: 200, data: [] }
+          case '/v1/foodwaste/summary':
+            return {
+              status: 200,
+              data: {
+                total_batches: 23,
+                total_waste_logs: 23,
+                total_weight_kg: 150.0,
+                total_carbon_saved_kg: 62.4,
+                batches: [{ id: 1, user_id: 101, batch_code: 'FW-BATCH-01', start_date: '2026-02-01', status: 'active' }],
+                emission_factors: [],
+              },
+            }
+          case '/v1/recycle/items':
+            return {
+              status: 200,
+              data: [
+                {
+                  id: 1,
+                  org_id: 1,
+                  code: 'KP-CAN-01',
+                  name: 'กระป๋องอลูมิเนียม',
+                  group_id: 2,
+                  group_name: 'โลหะ',
+                  status: 'active',
+                  price_from_dealer: 45,
+                  price_for_member: 40,
+                  point: 50,
+                },
+              ],
+            }
+          case '/v1/tabwater/meters':
+            return {
+              status: 200,
+              data: [
+                {
+                  meter_id: 1,
+                  org_id: 1,
+                  user_id: 101,
+                  meternumber: 'M-HS1-0001',
+                  submeter_name: 'นายสมชาย ห้องแซง',
+                  meter_address: '11 หมู่ 1',
+                  undertake_zone_id: 1,
+                  undertake_subzone_id: 1,
+                  status: 'active',
+                  owe_count: 0,
+                  cutmeter: '0',
+                  last_meter_recording: 210,
+                },
+              ],
+            }
+          case '/v1/tabwater/invoices':
+            return { status: 200, data: [] }
+          default:
+            return { status: 200, data: [] }
+        }
+      },
+    })
+
+    // Wave 1.5: Users & Zones
+    expect(await screen.findByText('somchai_hs1')).toBeInTheDocument()
+    expect(await screen.findByText('หมู่ 1 ห้องแซง')).toBeInTheDocument()
+
+    const nav = screen.getByRole('navigation', { name: /main/i })
+
+    // Wave 2: Inventory
+    await user.click(within(nav).getByRole('link', { name: /inventory/i }))
+    expect(await screen.findByText('INV-001')).toBeInTheDocument()
+    expect(screen.getByText('สารส้มก้อน')).toBeInTheDocument()
+
+    // Wave 3: FoodWaste
+    await user.click(within(nav).getByRole('link', { name: /foodwaste/i }))
+    expect(await screen.findByText('FW-BATCH-01')).toBeInTheDocument()
+    expect(screen.getByText('62.40')).toBeInTheDocument()
+
+    // Wave 4: Recycle Bank
+    await user.click(within(nav).getByRole('link', { name: /recycle bank/i }))
+    expect(await screen.findByText('KP-CAN-01')).toBeInTheDocument()
+    expect(screen.getByText('กระป๋องอลูมิเนียม')).toBeInTheDocument()
+
+    // Wave 5: Tabwater
+    await user.click(within(nav).getByRole('link', { name: /tabwater/i }))
+    expect(await screen.findByText('M-HS1-0001')).toBeInTheDocument()
+  })
 })

@@ -45,10 +45,20 @@ func main() {
 		Audience: cfg.KeycloakAudience,
 	})
 	orgService := app.NewOrganizationService(store)
+	identityService := app.NewIdentityService(store)
+	inventoryService := app.NewInventoryService(store)
+	foodwasteService := app.NewFoodWasteService(store)
+	recycleService := app.NewRecycleService(store)
+	tabwaterService := app.NewTabwaterService(store)
 
 	e := httpadapter.NewServer(httpadapter.Deps{
 		Verifier:           verifier,
 		Organizations:      orgService,
+		Identity:           identityService,
+		Inventory:          inventoryService,
+		FoodWaste:          foodwasteService,
+		Recycle:            recycleService,
+		Tabwater:           tabwaterService,
 		Health:             store,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 	})

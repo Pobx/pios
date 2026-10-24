@@ -1,0 +1,183 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  UsersPage,
+  InventoryPage,
+  FoodWastePage,
+  RecycleBankPage,
+  TabwaterPage,
+} from './ModulesPages'
+import * as modApi from './api'
+
+vi.mock('./api', async (importOriginal) => {
+  const actual = await importOriginal<typeof modApi>()
+  return {
+    ...actual,
+    fetchUsers: vi.fn(),
+    fetchZones: vi.fn(),
+    fetchInventoryItems: vi.fn(),
+    fetchInventoryTransactions: vi.fn(),
+    fetchFoodWasteSummary: vi.fn(),
+    fetchRecycleItems: vi.fn(),
+    fetchTabwaterMeters: vi.fn(),
+    fetchTabwaterInvoices: vi.fn(),
+  }
+})
+
+function renderWithQC(ui: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+}
+
+describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('Wave 1.5 UsersPage renders users and zones', async () => {
+    vi.mocked(modApi.fetchUsers).mockResolvedValue([
+      {
+        id: 101,
+        org_id: 1,
+        username: 'somchai01',
+        prefix: 'นาย',
+        firstname: 'สมชาย',
+        lastname: 'ใจดี',
+        email: 'somchai@otp.local',
+        phone: '0812345678',
+        address: '123 หมู่ 1',
+        zone_id: 1,
+        subzone_id: 1,
+        line_user_id: 'U1234567890',
+        status: 'active',
+      },
+    ])
+    vi.mocked(modApi.fetchZones).mockResolvedValue([
+      { id: 1, org_id: 1, zone_name: 'หมู่ที่ 1 บ้านห้องแซง', status: 'active', subzones: [] },
+    ])
+
+    renderWithQC(<UsersPage />)
+    expect(await screen.findByText('somchai01')).toBeInTheDocument()
+    expect(screen.getByText('นายสมชาย ใจดี')).toBeInTheDocument()
+    expect(screen.getByText('Linked')).toBeInTheDocument()
+    expect(await screen.findByText('หมู่ที่ 1 บ้านห้องแซง')).toBeInTheDocument()
+  })
+
+  it('Wave 2 InventoryPage renders items and approval transactions', async () => {
+    vi.mocked(modApi.fetchInventoryItems).mockResolvedValue([
+      {
+        id: 1,
+        org_id: 1,
+        category_id: 1,
+        category_name: 'สารเคมีประปา',
+        code: 'INV-CL01',
+        name: 'คลอรีนผง 65%',
+        unit: 'ถัง',
+        min_stock: 5,
+        item_type: 'consumable',
+        is_chemical: true,
+        return_required: false,
+      },
+    ])
+    vi.mocked(modApi.fetchInventoryTransactions).mockResolvedValue([
+      {
+        id: 10,
+        org_id: 1,
+        ref_no: 'REQ-2026-001',
+        item_id: 1,
+        item_name: 'คลอรีนผง 65%',
+        requester_id: 2,
+        quantity: 3,
+        purpose: 'เติมระบบประปาหมู่ 1',
+        status: 'approved',
+        current_step: 2,
+      },
+    ])
+
+    renderWithQC(<InventoryPage />)
+    expect(await screen.findByText('INV-CL01')).toBeInTheDocument()
+    expect(await screen.findByText('REQ-2026-001')).toBeInTheDocument()
+  })
+
+  it('Wave 3 FoodWastePage renders carbon saved KPIs and compost batches', async () => {
+    vi.mocked(modApi.fetchFoodWasteSummary).mockResolvedValue({
+      total_batches: 23,
+      total_waste_logs: 23,
+      total_weight_kg: 120.5,
+      total_carbon_saved_kg: 48.25,
+      batches: [{ id: 1, user_id: 10, batch_code: 'BATCH-2026-01', start_date: '2026-01-15', status: 'active' }],
+      emission_factors: [{ id: 1, material_name: 'เศษอาหาร', unit: 'kg', ef_value: 2.53, source: 'TGO' }],
+    })
+
+    renderWithQC(<FoodWastePage />)
+    expect(await screen.findByText('48.25')).toBeInTheDocument()
+    expect(screen.getByText('BATCH-2026-01')).toBeInTheDocument()
+  })
+
+  it('Wave 4 RecycleBankPage renders recyclable items and prices', async () => {
+    vi.mocked(modApi.fetchRecycleItems).mockResolvedValue([
+      {
+        id: 1,
+        org_id: 1,
+        code: 'KP-PET-01',
+        name: 'ขวดพลาสติกใส PET',
+        group_id: 1,
+        group_name: 'พลาสติก',
+        status: 'active',
+        price_from_dealer: 10.0,
+        price_for_member: 8.5,
+        point: 15,
+      },
+    ])
+
+    renderWithQC(<RecycleBankPage />)
+    expect(await screen.findByText('KP-PET-01')).toBeInTheDocument()
+    expect(screen.getByText('ขวดพลาสติกใส PET')).toBeInTheDocument()
+    expect(screen.getByText('8.50')).toBeInTheDocument()
+  })
+
+  it('Wave 5 TabwaterPage renders water meters and invoices', async () => {
+    vi.mocked(modApi.fetchTabwaterMeters).mockResolvedValue([
+      {
+        meter_id: 1,
+        org_id: 1,
+        user_id: 101,
+        meternumber: 'TW-0001',
+        submeter_name: 'สมชาย ใจดี',
+        meter_address: '99 หมู่ 1',
+        undertake_zone_id: 1,
+        undertake_subzone_id: 1,
+        status: 'active',
+        owe_count: 0,
+        cutmeter: '0',
+        last_meter_recording: 145,
+      },
+    ])
+    vi.mocked(modApi.fetchTabwaterInvoices).mockResolvedValue([
+      {
+        id: 501,
+        inv_no: 'INV-6901-001',
+        org_id: 1,
+        meter_id: 1,
+        period_id: 12,
+        period_name: 'ตุลาคม 2569',
+        lastmeter: 130,
+        currentmeter: 145,
+        water_used: 15,
+        paid: 105,
+        reserve_meter: 10,
+        vat: 8.05,
+        totalpaid: 123.05,
+        status: 'paid',
+      },
+    ])
+
+    renderWithQC(<TabwaterPage />)
+    expect(await screen.findByText('TW-0001')).toBeInTheDocument()
+    expect(await screen.findByText('INV-6901-001')).toBeInTheDocument()
+    expect(screen.getByText('123.05')).toBeInTheDocument()
+  })
+})

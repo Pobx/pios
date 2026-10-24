@@ -10,13 +10,28 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center gap-5 px-4 py-3">
           <Link to="/" className="text-lg font-semibold">OTP</Link>
-          <nav aria-label="Main" className="flex gap-4 text-sm">
+          <nav aria-label="Main" className="flex flex-wrap gap-4 text-sm">
             <NavLink to="/" end className={navClass}>Home</NavLink>
             {isAuthenticated && <NavLink to="/me" className={navClass}>Me</NavLink>}
             <Can roles={['admin', 'super_admin']}>
               <NavLink to="/organizations" className={navClass}>Organizations</NavLink>
+            </Can>
+            <Can roles={['admin', 'super_admin', 'finance_staff', 'tabwater_staff', 'recycle_bank_staff', 'foodwaste_staff', 'annual_staff']}>
+              <NavLink to="/users" className={navClass}>Users</NavLink>
+            </Can>
+            <Can roles={['admin', 'super_admin', 'finance_staff']}>
+              <NavLink to="/inventory" className={navClass}>Inventory</NavLink>
+            </Can>
+            <Can roles={['admin', 'super_admin', 'foodwaste_staff']}>
+              <NavLink to="/foodwaste" className={navClass}>FoodWaste</NavLink>
+            </Can>
+            <Can roles={['admin', 'super_admin', 'recycle_bank_staff', 'finance_staff']}>
+              <NavLink to="/recycle" className={navClass}>Recycle Bank</NavLink>
+            </Can>
+            <Can roles={['admin', 'super_admin', 'tabwater_staff', 'finance_staff']}>
+              <NavLink to="/tabwater" className={navClass}>Tabwater</NavLink>
             </Can>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
@@ -34,7 +49,7 @@ export function Layout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
       </main>
     </div>

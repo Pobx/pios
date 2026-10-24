@@ -5,6 +5,7 @@ import "errors"
 
 // Domain errors, mapped to HTTP statuses by inbound adapters.
 var (
+	ErrBadRequest   = errors.New("bad request")
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrForbidden    = errors.New("forbidden")
 	ErrNotFound     = errors.New("not found")
@@ -12,8 +13,14 @@ var (
 
 // Role names (Keycloak realm roles).
 const (
-	RoleSuperAdmin = "super_admin"
-	RoleAdmin      = "admin"
+	RoleSuperAdmin       = "super_admin"
+	RoleAdmin            = "admin"
+	RoleFinanceStaff     = "finance_staff"
+	RoleTabwaterStaff    = "tabwater_staff"
+	RoleRecycleBankStaff = "recycle_bank_staff"
+	RoleFoodwasteStaff   = "foodwaste_staff"
+	RoleAnnualStaff      = "annual_staff"
+	RoleUser             = "user"
 )
 
 // Organization is a tenant of the shared schema.

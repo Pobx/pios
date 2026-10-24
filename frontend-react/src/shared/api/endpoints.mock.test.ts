@@ -3,6 +3,17 @@ import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from '
 import { api, configureApiAuth } from './client'
 import { fetchMe } from '@/features/me/api'
 import { fetchOrganizations } from '@/features/organizations/api'
+import {
+  fetchUsers,
+  fetchZones,
+  linkUserLineAccount,
+  fetchInventoryItems,
+  fetchInventoryTransactions,
+  fetchFoodWasteSummary,
+  fetchRecycleItems,
+  fetchTabwaterMeters,
+  fetchTabwaterInvoices,
+} from '@/features/modules/api'
 
 describe('Frontend API Layer with Mock Adapter (API Mock Tests)', () => {
   const seenRequests: InternalAxiosRequestConfig[] = []
@@ -101,5 +112,48 @@ describe('Frontend API Layer with Mock Adapter (API Mock Tests)', () => {
       },
     })
     expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+
+  it('calls Waves 1.5 to 5 endpoints with Bearer token and expected paths', async () => {
+    const mockAdapter: AxiosAdapter = async (config) => {
+      seenRequests.push(config)
+      return {
+        data: config.url === '/v1/foodwaste/summary' ? { total_batches: 1, batches: [], emission_factors: [] } : [],
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        config,
+      }
+    }
+    api.defaults.adapter = mockAdapter
+
+    await fetchUsers({ q: 'somchai', limit: 10, offset: 0 })
+    await fetchZones()
+    await linkUserLineAccount(42, {
+      line_user_id: 'U1234567890',
+      verification_mode: 'staff_code',
+      verification_code: 'OTP-001',
+    })
+    await fetchInventoryItems()
+    await fetchInventoryTransactions()
+    await fetchFoodWasteSummary()
+    await fetchRecycleItems()
+    await fetchTabwaterMeters({ limit: 10, offset: 0 })
+    await fetchTabwaterInvoices({ status: 'paid', limit: 10, offset: 0 })
+
+    expect(seenRequests.map((r) => `${r.method?.toUpperCase()} ${r.url}`)).toEqual([
+      'GET /v1/users',
+      'GET /v1/zones',
+      'POST /v1/users/42/link-line',
+      'GET /v1/inventory/items',
+      'GET /v1/inventory/transactions',
+      'GET /v1/foodwaste/summary',
+      'GET /v1/recycle/items',
+      'GET /v1/tabwater/meters',
+      'GET /v1/tabwater/invoices',
+    ])
+    for (const req of seenRequests) {
+      expect(req.headers.get('Authorization')).toBe('Bearer mock-access-token-xyz')
+    }
   })
 })
