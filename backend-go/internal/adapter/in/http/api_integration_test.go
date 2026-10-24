@@ -2,8 +2,11 @@ package http_test
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -843,6 +846,62 @@ func TestAPIIntegration_WaveModules_WithRealPostgres(t *testing.T) {
 		}
 		if !strings.Contains(string(bodyCSV), "invoice_id,inv_no") {
 			t.Fatalf("expected CSV header row, got %s", string(bodyCSV))
+		}
+
+		// 7. IoT Smart Kiosk Ingest & PostgreSQL Row-Level Security (RLS) & LINE Webhook
+		var targetKioskID int64
+		var origKioskCount int
+		_ = pool.QueryRow(context.Background(), `SELECT id, COALESCE(total_waste_count, 0) FROM kiosks ORDER BY id LIMIT 1`).Scan(&targetKioskID, &origKioskCount)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `UPDATE kiosks SET total_waste_count = $1 WHERE id = $2`, origKioskCount, targetKioskID)
+		})
+
+		respKiosk, bodyKiosk := doPOST(t, fmt.Sprintf("/api/v1/kiosks/%d/ingest", targetKioskID), superTok, `{"waste_count_delta":3,"status":"active"}`)
+		if respKiosk.StatusCode != http.StatusOK {
+			t.Fatalf("POST /kiosks/%d/ingest status = %d: %s", targetKioskID, respKiosk.StatusCode, string(bodyKiosk))
+		}
+
+		// Verify PostgreSQL Row-Level Security (RLS) policy enforcement inside a transaction
+		var rlsPolicyCount int
+		if err := pool.QueryRow(context.Background(), `SELECT COUNT(*) FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation_policy'`).Scan(&rlsPolicyCount); err != nil {
+			t.Fatalf("query pg_policies: %v", err)
+		}
+		if rlsPolicyCount < 14 {
+			t.Fatalf("expected >= 14 RLS tenant_isolation_policy policies, got %d", rlsPolicyCount)
+		}
+
+		tx, err := pool.Begin(context.Background())
+		if err != nil {
+			t.Fatalf("begin tx: %v", err)
+		}
+		defer tx.Rollback(context.Background())
+		if _, err := tx.Exec(context.Background(), `SET LOCAL ROLE otp_app; SET LOCAL app.org_id = '999999'`); err != nil {
+			t.Fatalf("SET LOCAL ROLE / app.org_id: %v", err)
+		}
+		var visibleUsersForNonExistentOrg int
+		if err := tx.QueryRow(context.Background(), `SELECT COUNT(*) FROM users WHERE org_id IS NOT NULL`).Scan(&visibleUsersForNonExistentOrg); err != nil {
+			t.Fatalf("query users under RLS: %v", err)
+		}
+		if visibleUsersForNonExistentOrg != 0 {
+			t.Fatalf("expected 0 visible tenant users when app.org_id=999999 under RLS, got %d", visibleUsersForNonExistentOrg)
+		}
+
+		// Verify LINE Webhook with valid X-Line-Signature
+		webhookPayload := `{"events":[{"type":"message"}]}`
+		mac := hmac.New(sha256.New, []byte("otp-dev-line-channel-secret"))
+		mac.Write([]byte(webhookPayload))
+		sig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+		reqLine, _ := http.NewRequest(http.MethodPost, env.apiServer.URL+"/api/v1/webhooks/line", strings.NewReader(webhookPayload))
+		reqLine.Header.Set("Content-Type", "application/json")
+		reqLine.Header.Set("X-Line-Signature", sig)
+		respLine, err := env.client.Do(reqLine)
+		if err != nil {
+			t.Fatalf("do LINE webhook: %v", err)
+		}
+		defer respLine.Body.Close()
+		if respLine.StatusCode != http.StatusOK {
+			t.Fatalf("POST /webhooks/line status = %d", respLine.StatusCode)
 		}
 	})
 }

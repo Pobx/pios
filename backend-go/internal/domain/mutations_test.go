@@ -1,6 +1,9 @@
 package domain_test
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"testing"
 
@@ -93,6 +96,31 @@ func TestMutationCommandValidations(t *testing.T) {
 		}
 		if err := (domain.PayWaterInvoiceCommand{InvoiceID: 0, CashierID: 1}).Validate(); !errors.Is(err, domain.ErrBadRequest) {
 			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+	})
+
+	t.Run("KioskIngestCommand & VerifyLineWebhookSignature", func(t *testing.T) {
+		if err := (domain.KioskIngestCommand{KioskID: 1, WasteCountDelta: 5, Status: "active"}).Validate(); err != nil {
+			t.Fatalf("unexpected err: %v", err)
+		}
+		if err := (domain.KioskIngestCommand{KioskID: 0, WasteCountDelta: 5}).Validate(); !errors.Is(err, domain.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+		if err := (domain.KioskIngestCommand{KioskID: 1, WasteCountDelta: 1, Status: "broken"}).Validate(); !errors.Is(err, domain.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+
+		body := []byte(`{"events":[{"type":"message"}]}`)
+		secret := "my-line-secret"
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write(body)
+		validSig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+		if !domain.VerifyLineWebhookSignature(secret, body, validSig) {
+			t.Fatalf("expected valid HMAC signature to pass")
+		}
+		if domain.VerifyLineWebhookSignature(secret, body, "bad-sig") {
+			t.Fatalf("expected invalid signature to fail")
 		}
 	})
 }

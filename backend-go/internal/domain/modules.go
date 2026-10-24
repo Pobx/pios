@@ -227,6 +227,7 @@ type RecycleRepository interface {
 	ListBankAccounts(ctx context.Context, orgID *int64) ([]BankAccountSummary, error)
 	RecordPurchase(ctx context.Context, orgID int64, cmd RecordRecyclePurchaseCommand) (RecyclePurchaseTransaction, error)
 	GetSubmodulesOverview(ctx context.Context, orgID *int64) (RecycleSubmodulesOverview, error)
+	IngestKioskTelemetry(ctx context.Context, orgID *int64, cmd KioskIngestCommand) (KioskSummary, error)
 }
 
 // ---- Wave 5: Tabwater Module (Meters, Invoices & Progressive Tariff) --------

@@ -500,3 +500,30 @@ func (s *Store) PayInvoice(ctx context.Context, orgID *int64, cmd domain.PayWate
 	}
 	return inv, nil
 }
+
+// ---- Wave 6: IoT Smart Kiosk Telemetry Ingest -------------------------------
+
+const ingestKioskTelemetrySQL = `
+UPDATE kiosks
+SET total_waste_count = total_waste_count + $3,
+    status            = COALESCE(NULLIF($4, ''), status),
+    last_online_at    = NOW(),
+    updated_at        = NOW()
+WHERE id = $2 AND ($1::bigint IS NULL OR org_id = $1 OR org_id IS NULL)
+RETURNING id, COALESCE(org_id, 0), COALESCE(name, ''), COALESCE(lat, 0)::float8, COALESCE(lng, 0)::float8, COALESCE(status, 'offline'), COALESCE(total_waste_count, 0)
+`
+
+func (s *Store) IngestKioskTelemetry(ctx context.Context, orgID *int64, cmd domain.KioskIngestCommand) (domain.KioskSummary, error) {
+	var k domain.KioskSummary
+	err := s.db.QueryRow(
+		ctx, ingestKioskTelemetrySQL,
+		orgID, cmd.KioskID, cmd.WasteCountDelta, cmd.Status,
+	).Scan(&k.ID, &k.OrgID, &k.Name, &k.Lat, &k.Lng, &k.Status, &k.TotalWasteCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.KioskSummary{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.KioskSummary{}, fmt.Errorf("ingest kiosk telemetry: %w", err)
+	}
+	return k, nil
+}

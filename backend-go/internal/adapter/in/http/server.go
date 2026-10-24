@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -45,17 +46,19 @@ func NewServer(deps Deps) *echo.Echo {
 	}
 
 	h := &handler{
-		organizations: deps.Organizations,
-		identity:      deps.Identity,
-		inventory:     deps.Inventory,
-		foodwaste:     deps.FoodWaste,
-		recycle:       deps.Recycle,
-		tabwater:      deps.Tabwater,
-		health:        deps.Health,
+		organizations:    deps.Organizations,
+		identity:         deps.Identity,
+		inventory:        deps.Inventory,
+		foodwaste:        deps.FoodWaste,
+		recycle:          deps.Recycle,
+		tabwater:         deps.Tabwater,
+		health:           deps.Health,
+		idempotencyCache: make(map[string]domain.KioskSummary),
 	}
 
 	e.GET("/healthz", h.healthz)
 	e.GET("/readyz", h.readyz)
+	e.POST("/api/v1/webhooks/line", h.handleLineWebhook)
 
 	v1 := e.Group("/api/v1", authMiddleware(deps.Verifier))
 	v1.GET("/me", h.me)
@@ -67,13 +70,15 @@ func NewServer(deps Deps) *echo.Echo {
 }
 
 type handler struct {
-	organizations *app.OrganizationService
-	identity      *app.IdentityService
-	inventory     *app.InventoryService
-	foodwaste     *app.FoodWasteService
-	recycle       *app.RecycleService
-	tabwater      *app.TabwaterService
-	health        app.HealthChecker
+	organizations    *app.OrganizationService
+	identity         *app.IdentityService
+	inventory        *app.InventoryService
+	foodwaste        *app.FoodWasteService
+	recycle          *app.RecycleService
+	tabwater         *app.TabwaterService
+	health           app.HealthChecker
+	idempotencyMu    sync.Mutex
+	idempotencyCache map[string]domain.KioskSummary
 }
 
 type statusResponse struct {

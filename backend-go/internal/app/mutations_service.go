@@ -156,6 +156,21 @@ func (s *RecycleService) RecordPurchase(ctx context.Context, claims domain.Claim
 	return s.repo.RecordPurchase(ctx, orgID, cmd)
 }
 
+func (s *RecycleService) IngestKioskTelemetry(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.KioskIngestCommand) (domain.KioskSummary, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff, domain.RoleAnnualStaff) {
+		return domain.KioskSummary{}, domain.ErrForbidden
+	}
+	orgID, err := claims.ResolveOrgScope(requestedOrgID)
+	if err != nil {
+		return domain.KioskSummary{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.KioskSummary{}, err
+	}
+	cmd.Status = strings.ToLower(strings.TrimSpace(cmd.Status))
+	return s.repo.IngestKioskTelemetry(ctx, orgID, cmd)
+}
+
 // ---- Wave 5: Tabwater Meter Reading & Invoice Payment Use Cases -------------
 
 func (s *TabwaterService) RecordMeterReading(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.RecordMeterReadingCommand) (domain.WaterInvoice, error) {

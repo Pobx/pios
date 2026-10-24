@@ -71,17 +71,25 @@ def main() -> int:
     fk_Check = run_psql(
         "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'org_id_fk';"
     )
-    print(f"[2/4] Legacy org_id_fk columns remaining: {fk_Check} (expected 0)")
+    print(f"[2/5] Legacy org_id_fk columns remaining: {fk_Check} (expected 0)")
     if int(fk_Check) != 0:
         print("FAIL: Un-normalized org_id_fk columns found!", file=sys.stderr)
         return 1
 
-    print("[3/4] Critical domain table row counts:")
+    rls_count = int(
+        run_psql("SELECT COUNT(*) FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation_policy';")
+    )
+    print(f"[3/5] PostgreSQL RLS tenant_isolation_policy count: {rls_count} (expected >= 14)")
+    if rls_count < 14:
+        print("FAIL: Missing PostgreSQL RLS policies!", file=sys.stderr)
+        return 1
+
+    print("[4/5] Critical domain table row counts:")
     for table in CRITICAL_TABLES:
         count = int(run_psql(f"SELECT COUNT(*) FROM {table};"))
         print(f"      - {table:<28}: {count:>6} rows")
 
-    print("[4/4] Financial & Quantity Aggregates Check:")
+    print("[5/5] Financial & Quantity Aggregates Check:")
     aggregates = [
         ("Inventory Total Min Stock (inv_items.min_stock)", "SELECT COALESCE(SUM(min_stock), 0) FROM inv_items;"),
         ("Compost Waste Total kg (foodwaste_waste_logs.weight_kg)", "SELECT COALESCE(SUM(weight_kg), 0) FROM foodwaste_waste_logs;"),

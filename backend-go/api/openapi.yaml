@@ -1,0 +1,260 @@
+openapi: 3.0.3
+info:
+  title: OTP Municipal Platform API
+  version: 1.0.0
+  description: >
+    Modernized multi-tenant municipal platform API (Go + Echo + PostgreSQL 16 + Keycloak OIDC RS256).
+    All error responses conform to RFC 7807 Problem Details (`application/problem+json`).
+servers:
+  - url: http://localhost/api/v1
+    description: Local Gateway (Nginx -> Go Backend)
+  - url: http://localhost:8080/api/v1
+    description: Direct Go Backend Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ProblemDetails:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Forbidden
+        status:
+          type: integer
+          example: 403
+        detail:
+          type: string
+          example: insufficient role permissions
+        instance:
+          type: string
+          example: /api/v1/organizations
+
+security:
+  - bearerAuth: []
+
+paths:
+  /me:
+    get:
+      summary: Current authenticated user profile & tenant claims
+      responses:
+        '200':
+          description: Authenticated user claims (`sub`, `username`, `roles`, `org_id`)
+        '401':
+          description: Unauthorized (RFC 7807)
+
+  /organizations:
+    get:
+      summary: List organizations (scoped to `org_id` for `admin`, all for `super_admin`)
+      responses:
+        '200':
+          description: Array of organizations
+        '403':
+          description: Forbidden (RFC 7807)
+
+  /users:
+    get:
+      summary: Wave 1.5 — List tenant users
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Array of `UserSummary`
+
+  /users/{id}/link-line:
+    post:
+      summary: Wave 1.5 — Ownership-verified LINE account linking (`staff_code` / `staff_approval` / `password`)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Updated `UserSummary` with linked `line_user_id`
+
+  /zones:
+    get:
+      summary: Wave 1.5 — List zones and nested subzones
+      responses:
+        '200':
+          description: Array of `Zone`
+
+  /resident/overview:
+    get:
+      summary: Wave 1.5 — Self-service resident overview (water meters, invoices, recycle/foodwaste bank accounts)
+      responses:
+        '200':
+          description: `ResidentOverview`
+
+  /inventory/items:
+    get:
+      summary: Wave 2 — List inventory items
+      responses:
+        '200':
+          description: Array of `InventoryItem`
+    post:
+      summary: Wave 2 — Create new inventory item
+      responses:
+        '201':
+          description: Created `InventoryItem`
+
+  /inventory/transactions:
+    get:
+      summary: Wave 2 — List inventory stock transactions
+      responses:
+        '200':
+          description: Array of `InventoryTransaction`
+    post:
+      summary: Wave 2 — Create stock withdrawal request (`PENDING`)
+      responses:
+        '201':
+          description: Created `InventoryTransaction`
+
+  /inventory/transactions/{id}/decision:
+    post:
+      summary: Wave 2 — Approve or Reject inventory transaction (`APPROVED` / `REJECTED`)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Updated `InventoryTransaction`
+
+  /foodwaste/summary:
+    get:
+      summary: Wave 3 — Get compost batches, waste logs & carbon credit KPIs
+      responses:
+        '200':
+          description: `FoodWasteSummary`
+
+  /foodwaste/batches:
+    post:
+      summary: Wave 3 — Open a new compost batch (`filling`)
+      responses:
+        '201':
+          description: Created `CompostBatch`
+
+  /foodwaste/logs:
+    post:
+      summary: Wave 3 — Record organic waste log & calculate carbon saved (`kgCO2e`)
+      responses:
+        '201':
+          description: Created `WasteLogEntry`
+
+  /recycle/items:
+    get:
+      summary: Wave 4 — List KeptKaya recyclable items, prices & points
+      responses:
+        '200':
+          description: Array of `RecycleItem`
+
+  /recycle/accounts:
+    get:
+      summary: Wave 4 — List member recycle bank accounts
+      responses:
+        '200':
+          description: Array of `BankAccountSummary`
+
+  /recycle/purchases:
+    post:
+      summary: Wave 4 — Record recycle purchase & credit member bank balance/points
+      responses:
+        '201':
+          description: Created `RecyclePurchaseTransaction`
+
+  /recycle/submodules:
+    get:
+      summary: Wave 4 & 6 — Get IoT Smart Kiosks, Welfare Fund configs/payouts & Annual Trash subscriptions
+      responses:
+        '200':
+          description: `RecycleSubmodulesOverview`
+
+  /kiosks/{id}/ingest:
+    post:
+      summary: Wave 6 — IoT Smart Kiosk telemetry & waste count ingest (supports `Idempotency-Key` header)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Updated `KioskSummary`
+
+  /tabwater/meters:
+    get:
+      summary: Wave 5 — List water meters & latest readings
+      responses:
+        '200':
+          description: Array of `WaterMeter`
+
+  /tabwater/invoices:
+    get:
+      summary: Wave 5 — List water invoices
+      responses:
+        '200':
+          description: Array of `WaterInvoice`
+
+  /tabwater/readings:
+    post:
+      summary: Wave 5 — Record meter reading, calculate progressive tariff + VAT, and issue invoice
+      responses:
+        '201':
+          description: Created `WaterInvoice`
+
+  /tabwater/invoices/{id}/pay:
+    post:
+      summary: Wave 5 — Receive water invoice payment & record accounting ledger entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paid `WaterInvoice`
+
+  /reports/tabwater-invoices.csv:
+    get:
+      summary: Wave 5 — Export water invoices as UTF-8 BOM CSV for Excel
+      responses:
+        '200':
+          description: CSV file (`text/csv; charset=utf-8`)
+
+  /webhooks/line:
+    post:
+      summary: LINE Messaging API Webhook (authenticated via `X-Line-Signature` HMAC-SHA256)
+      security: []
+      parameters:
+        - in: header
+          name: X-Line-Signature
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Processed webhook events
+        '401':
+          description: Invalid `X-Line-Signature` (RFC 7807)

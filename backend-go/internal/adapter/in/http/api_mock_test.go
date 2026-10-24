@@ -394,6 +394,9 @@ func (m *mockAllModulesRepo) GetSubmodulesOverview(context.Context, *int64) (dom
 		WelfareConfigs: []domain.WelfareConfig{{ID: 1, OrgID: 1, DefaultPayoutAmount: 5000}},
 	}, m.err
 }
+func (m *mockAllModulesRepo) IngestKioskTelemetry(_ context.Context, _ *int64, cmd domain.KioskIngestCommand) (domain.KioskSummary, error) {
+	return domain.KioskSummary{ID: cmd.KioskID, OrgID: 1, Name: "Kiosk-HSG1", Status: cmd.Status, TotalWasteCount: 42 + cmd.WasteCountDelta}, m.err
+}
 func (m *mockAllModulesRepo) ListMeters(context.Context, *int64, int, int) ([]domain.WaterMeter, error) {
 	return m.meters, m.err
 }
@@ -527,6 +530,7 @@ func TestAPIMock_WaveModules(t *testing.T) {
 			{"/api/v1/foodwaste/batches", `{"user_id":1,"batch_code":"FW-99","start_date":"2026-10-24"}`, http.StatusCreated},
 			{"/api/v1/foodwaste/logs", `{"user_id":1,"weight_kg":4.0,"moisture":"good"}`, http.StatusCreated},
 			{"/api/v1/recycle/purchases", `{"trans_no":"KP-TX-99","user_id":1,"total_weight":5.5,"total_amount":45,"total_points":20}`, http.StatusCreated},
+			{"/api/v1/kiosks/1/ingest", `{"waste_count_delta":3,"status":"active"}`, http.StatusOK},
 			{"/api/v1/tabwater/readings", `{"inv_no":"INV-99","meter_id":1,"period_id":1,"current_meter":150,"reserve_fee":10,"vat_percent":7}`, http.StatusCreated},
 			{"/api/v1/tabwater/invoices/5001/pay", `{"cashier_id":1}`, http.StatusOK},
 		}
@@ -548,5 +552,33 @@ func TestAPIMock_WaveModules(t *testing.T) {
 			srv.ServeHTTP(recForbidden, reqForbidden)
 			assertProblem(t, recForbidden, http.StatusForbidden)
 		}
+	})
+
+	t.Run("POST /api/v1/kiosks/:id/ingest enforces Idempotency-Key replay and POST /api/v1/webhooks/line verifies X-Line-Signature", func(t *testing.T) {
+		req1 := httptest.NewRequest(http.MethodPost, "/api/v1/kiosks/1/ingest", strings.NewReader(`{"waste_count_delta":5,"status":"active"}`))
+		req1.Header.Set("Authorization", "Bearer admin-tok")
+		req1.Header.Set("Content-Type", "application/json")
+		req1.Header.Set("Idempotency-Key", "idem-kiosk-001")
+		rec1 := httptest.NewRecorder()
+		srv.ServeHTTP(rec1, req1)
+		if rec1.Code != http.StatusOK {
+			t.Fatalf("first ingest status = %d", rec1.Code)
+		}
+
+		req2 := httptest.NewRequest(http.MethodPost, "/api/v1/kiosks/1/ingest", strings.NewReader(`{"waste_count_delta":999,"status":"offline"}`))
+		req2.Header.Set("Authorization", "Bearer admin-tok")
+		req2.Header.Set("Content-Type", "application/json")
+		req2.Header.Set("Idempotency-Key", "idem-kiosk-001")
+		rec2 := httptest.NewRecorder()
+		srv.ServeHTTP(rec2, req2)
+		if rec2.Code != http.StatusOK || rec2.Header().Get("X-Idempotent-Replay") != "true" {
+			t.Fatalf("expected X-Idempotent-Replay=true, got status=%d header=%q", rec2.Code, rec2.Header().Get("X-Idempotent-Replay"))
+		}
+
+		// LINE Webhook without signature -> 401 RFC7807
+		reqLineBad := httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/line", strings.NewReader(`{"events":[]}`))
+		recLineBad := httptest.NewRecorder()
+		srv.ServeHTTP(recLineBad, reqLineBad)
+		assertProblem(t, recLineBad, http.StatusUnauthorized)
 	})
 }

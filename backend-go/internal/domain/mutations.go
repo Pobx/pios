@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"strings"
 )
 
@@ -197,4 +200,42 @@ func (cmd PayWaterInvoiceCommand) Validate() error {
 		return ErrBadRequest
 	}
 	return nil
+}
+
+// ---- Wave 6: IoT Smart Kiosk Telemetry Ingest & LINE Webhook Verification ----
+
+type KioskIngestCommand struct {
+	KioskID         int64  `json:"kiosk_id"`
+	WasteCountDelta int    `json:"waste_count_delta"`
+	Status          string `json:"status"` // "idle" | "active" | "maintenance" | "offline"
+}
+
+func (cmd KioskIngestCommand) Validate() error {
+	if cmd.KioskID <= 0 || cmd.WasteCountDelta < 0 {
+		return ErrBadRequest
+	}
+	s := strings.ToLower(strings.TrimSpace(cmd.Status))
+	switch s {
+	case "", "idle", "active", "maintenance", "offline":
+	default:
+		return ErrBadRequest
+	}
+	return nil
+}
+
+// VerifyLineWebhookSignature validates X-Line-Signature HMAC-SHA256 against the raw webhook request body.
+func VerifyLineWebhookSignature(channelSecret string, body []byte, signatureBase64 string) bool {
+	secret := strings.TrimSpace(channelSecret)
+	sig := strings.TrimSpace(signatureBase64)
+	if secret == "" || sig == "" {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	expected := mac.Sum(nil)
+	got, err := base64.StdEncoding.DecodeString(sig)
+	if err != nil {
+		return false
+	}
+	return hmac.Equal(expected, got)
 }

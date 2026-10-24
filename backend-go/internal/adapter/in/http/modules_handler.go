@@ -3,8 +3,11 @@ package http
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -57,6 +60,7 @@ func registerModuleRoutes(v1 *echo.Group, h *handler) {
 		v1.GET("/recycle/accounts", h.listRecycleAccounts, requireAnyRole(rcRoles...))
 		v1.POST("/recycle/purchases", h.recordRecyclePurchase, requireAnyRole(rcRoles...))
 		v1.GET("/recycle/submodules", h.getRecycleSubmodules, requireAnyRole(rcRoles...))
+		v1.POST("/kiosks/:id/ingest", h.ingestKioskTelemetry, requireAnyRole(rcRoles...))
 	}
 
 	// Wave 5: Tabwater Module (Meters, Invoices, Readings, Payment & CSV Report Export)
@@ -463,4 +467,75 @@ func (h *handler) exportTabwaterInvoicesCSV(c echo.Context) error {
 
 	c.Response().Header().Set(echo.HeaderContentDisposition, `attachment; filename="tabwater-invoices.csv"`)
 	return c.Blob(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
+}
+
+func (h *handler) ingestKioskTelemetry(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	kioskID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || kioskID <= 0 {
+		return writeProblem(c, http.StatusBadRequest, "invalid kiosk id")
+	}
+
+	idemKey := strings.TrimSpace(c.Request().Header.Get("Idempotency-Key"))
+	if idemKey != "" {
+		h.idempotencyMu.Lock()
+		cached, ok := h.idempotencyCache[idemKey]
+		h.idempotencyMu.Unlock()
+		if ok {
+			c.Response().Header().Set("X-Idempotent-Replay", "true")
+			return c.JSON(http.StatusOK, cached)
+		}
+	}
+
+	var cmd domain.KioskIngestCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	cmd.KioskID = kioskID
+
+	updated, err := h.recycle.IngestKioskTelemetry(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+
+	if idemKey != "" {
+		h.idempotencyMu.Lock()
+		h.idempotencyCache[idemKey] = updated
+		h.idempotencyMu.Unlock()
+	}
+
+	return c.JSON(http.StatusOK, updated)
+}
+
+func (h *handler) handleLineWebhook(c echo.Context) error {
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return writeProblem(c, http.StatusBadRequest, "failed to read webhook body")
+	}
+	secret := strings.TrimSpace(os.Getenv("LINE_CHANNEL_SECRET"))
+	if secret == "" {
+		secret = "otp-dev-line-channel-secret"
+	}
+	sig := c.Request().Header.Get("X-Line-Signature")
+	if !domain.VerifyLineWebhookSignature(secret, body, sig) {
+		return writeProblem(c, http.StatusUnauthorized, "invalid or missing X-Line-Signature")
+	}
+
+	var payload struct {
+		Events []map[string]any `json:"events"`
+	}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return writeProblem(c, http.StatusBadRequest, "invalid LINE webhook JSON")
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"status":           "ok",
+		"processed_events": len(payload.Events),
+	})
 }
