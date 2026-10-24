@@ -166,9 +166,12 @@ func TestNewPoolInvalidDSN(t *testing.T) {
 }
 
 func TestStoreIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping postgres integration test in -short mode")
+	}
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+		dsn = "postgres://otp:otp_dev_password@127.0.0.1:5432/otp?sslmode=disable"
 	}
 	ctx := context.Background()
 	pool, err := postgres.NewPool(ctx, dsn)

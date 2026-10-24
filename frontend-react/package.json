@@ -4,6 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "test:unit": "vitest run src/shared/config src/features",
+    "test:api": "vitest run src/shared/api",
+    "test:e2e": "vitest run src/e2e",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
