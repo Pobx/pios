@@ -1,0 +1,254 @@
+{
+  "realm": "otp",
+  "enabled": true,
+  "displayName": "OTP (dev)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "permanentLockout": false,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      {
+        "name": "super_admin",
+        "description": "OTP role super_admin"
+      },
+      {
+        "name": "admin",
+        "description": "OTP role admin"
+      },
+      {
+        "name": "finance_staff",
+        "description": "OTP role finance_staff"
+      },
+      {
+        "name": "tabwater_staff",
+        "description": "OTP role tabwater_staff"
+      },
+      {
+        "name": "recycle_bank_staff",
+        "description": "OTP role recycle_bank_staff"
+      },
+      {
+        "name": "foodwaste_staff",
+        "description": "OTP role foodwaste_staff"
+      },
+      {
+        "name": "annual_staff",
+        "description": "OTP role annual_staff"
+      },
+      {
+        "name": "user",
+        "description": "OTP role user"
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-otp",
+    "description": "default",
+    "composite": true,
+    "composites": {
+      "realm": [
+        "user"
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "otp-web",
+      "name": "OTP Web (SPA)",
+      "description": "Public SPA client, Authorization Code + PKCE (S256)",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "fullScopeAllowed": true,
+      "protocol": "openid-connect",
+      "enabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "bearerOnly": false,
+      "rootUrl": "http://localhost",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost/*##http://localhost:5173/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "org_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "org_id",
+            "claim.name": "org_id",
+            "jsonType.label": "long",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "otp-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "otp-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "otp-api",
+      "name": "OTP API (resource server)",
+      "description": "Bearer-only resource; used only as token audience",
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "enabled": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "otp-cli-test",
+      "name": "DEV ONLY - token verification",
+      "description": "LOCAL DEV ONLY: direct grant for smoke tests. Never import into shared/prod environments.",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "protocol": "openid-connect",
+      "enabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "defaultClientScopes": [
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "org_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "org_id",
+            "claim.name": "org_id",
+            "jsonType.label": "long",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "otp-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "otp-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin1@otp.local",
+      "firstName": "admin1",
+      "lastName": "Dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "attributes": {
+        "org_id": [
+          "1"
+        ]
+      }
+    },
+    {
+      "username": "user1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "user1@otp.local",
+      "firstName": "user1",
+      "lastName": "Dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ],
+      "attributes": {
+        "org_id": [
+          "1"
+        ]
+      }
+    },
+    {
+      "username": "super1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "super1@otp.local",
+      "firstName": "super1",
+      "lastName": "Dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "super1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "super_admin"
+      ]
+    }
+  ]
+}
