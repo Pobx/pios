@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: otp
+  labels: {app.kubernetes.io/name: backend, app.kubernetes.io/part-of: otp}
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {app.kubernetes.io/name: backend}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: backend, app.kubernetes.io/part-of: otp}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backend
+          # Pin to an immutable tag/digest in real deployments.
+          image: registry.example.com/otp/backend-go:CHANGE_ME
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: HTTP_ADDR, valueFrom: {configMapKeyRef: {name: otp-config, key: HTTP_ADDR}}}
+            - {name: LOG_LEVEL, valueFrom: {configMapKeyRef: {name: otp-config, key: LOG_LEVEL}}}
+            - {name: CORS_ALLOWED_ORIGINS, valueFrom: {configMapKeyRef: {name: otp-config, key: CORS_ALLOWED_ORIGINS}}}
+            - {name: KEYCLOAK_ISSUER, valueFrom: {configMapKeyRef: {name: otp-config, key: KEYCLOAK_ISSUER}}}
+            - {name: KEYCLOAK_JWKS_URL, valueFrom: {configMapKeyRef: {name: otp-config, key: KEYCLOAK_JWKS_URL}}}
+            - {name: KEYCLOAK_AUDIENCE, valueFrom: {configMapKeyRef: {name: otp-config, key: KEYCLOAK_AUDIENCE}}}
+            - {name: DATABASE_URL, valueFrom: {secretKeyRef: {name: otp-db, key: DATABASE_URL}}}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: otp
+  labels: {app.kubernetes.io/name: backend, app.kubernetes.io/part-of: otp}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: backend}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend
+  namespace: otp
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: backend}
+---
+# OPTION B for the database (alternative to putting DB_HOST directly in DATABASE_URL):
+# give the external DB a stable in-cluster name. Then use host `postgres-external` in DATABASE_URL.
+# Left commented out so the default flow uses the direct host from the Secret.
+#
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: postgres-external
+#   namespace: otp
+# spec:
+#   type: ExternalName
+#   externalName: CHANGE_ME-db-host.example.internal

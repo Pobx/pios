@@ -1,0 +1,30 @@
+# Non-secret configuration. Edit the values for your environment before applying.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otp-config
+  namespace: otp
+  labels:
+    app.kubernetes.io/part-of: otp
+data:
+  # --- Keycloak: INTERNAL vs EXTERNAL URL rule -------------------------------------------
+  # KEYCLOAK_ISSUER   = EXTERNAL public URL (what browsers use; must equal the token `iss`).
+  # KEYCLOAK_JWKS_URL = URL reachable FROM the backend pod (in-cluster Service DNS, or the
+  #                     external URL if Keycloak is outside the cluster). Never used as `iss`.
+  KEYCLOAK_ISSUER: "https://auth.otp.example.com/realms/otp"
+  KEYCLOAK_JWKS_URL: "https://auth.otp.example.com/realms/otp/protocol/openid-connect/certs"
+  KEYCLOAK_AUDIENCE: "otp-api"
+  # --- Backend ---
+  HTTP_ADDR: ":8080"
+  LOG_LEVEL: "info"
+  CORS_ALLOWED_ORIGINS: "https://otp.example.com"
+  # --- External PostgreSQL (RDS / bare metal). Not deployed in K8s. ---------------------
+  # Non-secret parts only; user/password/DATABASE_URL live in the otp-db Secret.
+  DB_HOST: "CHANGE_ME-db-host.example.internal"
+  DB_PORT: "5432"
+  DB_NAME: "otp"
+  DB_SSLMODE: "require"
+  # --- Frontend runtime config (rendered into /config.js by the container entrypoint) ---
+  KEYCLOAK_AUTHORITY: "https://auth.otp.example.com/realms/otp"
+  KEYCLOAK_CLIENT_ID: "otp-web"
+  API_BASE_URL: "/api"

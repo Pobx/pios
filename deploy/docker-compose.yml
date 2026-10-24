@@ -47,6 +47,8 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Work around OpenJDK 21 SIGILL (SVE trap) on Apple Silicon Linux VMs; no-op on amd64.
+      JAVA_OPTS_APPEND: "${JAVA_OPTS_APPEND:--XX:+IgnoreUnrecognizedVMOptions -XX:UseSVE=0}"
     ports:
       - "${KEYCLOAK_PORT:-8081}:8080"
     volumes:

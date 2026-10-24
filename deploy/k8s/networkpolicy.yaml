@@ -1,0 +1,94 @@
+# EXAMPLE NetworkPolicies (needs a CNI that enforces them, e.g. Calico/Cilium).
+# Adjust the ingress-controller namespace label and the DB CIDR/port for your environment.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-all, namespace: otp}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# Allow DNS for every pod.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns-egress, namespace: otp}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+# Ingress controller -> nginx gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-ingress-to-nginx, namespace: otp}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: nginx}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ingress-nginx}   # CHANGE_ME
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+# nginx gateway -> backend, frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-nginx-egress, namespace: otp}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: nginx}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: backend}}
+      ports: [{protocol: TCP, port: 8080}]
+    - to:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+      ports: [{protocol: TCP, port: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-nginx-to-backend, namespace: otp}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: backend}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: nginx}}
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-nginx-to-frontend, namespace: otp}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: frontend}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: nginx}}
+      ports: [{protocol: TCP, port: 80}]
+---
+# backend -> external PostgreSQL and Keycloak (JWKS). Replace CIDRs with the real ones.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-backend-egress-external, namespace: otp}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: backend}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: {cidr: 10.0.0.0/8}      # CHANGE_ME: DB subnet / RDS endpoint range
+      ports: [{protocol: TCP, port: 5432}]
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}       # CHANGE_ME: narrow to the Keycloak address
+      ports: [{protocol: TCP, port: 443}]
