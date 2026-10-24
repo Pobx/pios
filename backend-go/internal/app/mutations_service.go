@@ -200,3 +200,112 @@ func (s *TabwaterService) PayInvoice(ctx context.Context, claims domain.Claims, 
 	}
 	return s.repo.PayInvoice(ctx, orgID, cmd)
 }
+
+// ---- Self-Sufficiency Master Data & Monthly Operational Use Cases -----------
+
+func (s *IdentityService) CreateUser(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.CreateUserCommand) (domain.UserSummary, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin) {
+		return domain.UserSummary{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.UserSummary{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.UserSummary{}, err
+	}
+	return s.repo.CreateUser(ctx, orgID, cmd)
+}
+
+func (s *IdentityService) CreateZone(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.CreateZoneCommand) (domain.Zone, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin) {
+		return domain.Zone{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.Zone{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.Zone{}, err
+	}
+	return s.repo.CreateZone(ctx, orgID, cmd)
+}
+
+func (s *RecycleService) WithdrawMemberBalance(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.CreateRecycleWithdrawalCommand) (domain.BankAccountSummary, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff) {
+		return domain.BankAccountSummary{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.BankAccountSummary{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.BankAccountSummary{}, err
+	}
+	if strings.TrimSpace(cmd.PayoutMethod) == "" {
+		cmd.PayoutMethod = "cash"
+	} else {
+		cmd.PayoutMethod = strings.ToLower(strings.TrimSpace(cmd.PayoutMethod))
+	}
+	return s.repo.WithdrawMemberBalance(ctx, orgID, cmd)
+}
+
+func (s *RecycleService) SetRecycleItemPrice(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.SetRecycleItemPriceCommand) (domain.RecycleItem, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff) {
+		return domain.RecycleItem{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.RecycleItem{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.RecycleItem{}, err
+	}
+	return s.repo.SetRecycleItemPrice(ctx, orgID, cmd)
+}
+
+func (s *TabwaterService) ListPeriods(ctx context.Context, claims domain.Claims, requestedOrgID *int64) ([]domain.InvoicePeriod, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleTabwaterStaff, domain.RoleFinanceStaff) {
+		return nil, domain.ErrForbidden
+	}
+	orgID, err := claims.ResolveOrgScope(requestedOrgID)
+	if err != nil {
+		return nil, err
+	}
+	periods, err := s.repo.ListPeriods(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if periods == nil {
+		return []domain.InvoicePeriod{}, nil
+	}
+	return periods, nil
+}
+
+func (s *TabwaterService) CreatePeriod(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.CreateInvoicePeriodCommand) (domain.InvoicePeriod, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleTabwaterStaff, domain.RoleFinanceStaff) {
+		return domain.InvoicePeriod{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.InvoicePeriod{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.InvoicePeriod{}, err
+	}
+	return s.repo.CreatePeriod(ctx, orgID, cmd)
+}
+
+func (s *TabwaterService) CreateMeter(ctx context.Context, claims domain.Claims, requestedOrgID *int64, cmd domain.CreateWaterMeterCommand) (domain.WaterMeter, error) {
+	if !claims.HasAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleTabwaterStaff, domain.RoleFinanceStaff) {
+		return domain.WaterMeter{}, domain.ErrForbidden
+	}
+	orgID, err := resolveRequiredOrgID(claims, requestedOrgID)
+	if err != nil {
+		return domain.WaterMeter{}, err
+	}
+	if err := cmd.Validate(); err != nil {
+		return domain.WaterMeter{}, err
+	}
+	return s.repo.CreateMeter(ctx, orgID, cmd)
+}

@@ -30,7 +30,9 @@ func registerModuleRoutes(v1 *echo.Group, h *handler) {
 	// Wave 1.5: Identity, Users, Zones, Safe LINE Account Linking & Resident Portal
 	if h.identity != nil {
 		v1.GET("/users", h.listUsers, requireAnyRole(staffRoles...))
+		v1.POST("/users", h.createUser, requireAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin))
 		v1.GET("/zones", h.listZones, requireAnyRole(staffRoles...))
+		v1.POST("/zones", h.createZone, requireAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin))
 		v1.POST("/users/:id/link-line", h.linkLineAccount, requireAnyRole(domain.RoleSuperAdmin, domain.RoleAdmin))
 		v1.GET("/resident/overview", h.getResidentOverview)
 	}
@@ -53,20 +55,25 @@ func registerModuleRoutes(v1 *echo.Group, h *handler) {
 		v1.POST("/foodwaste/logs", h.createWasteLog, requireAnyRole(fwRoles...))
 	}
 
-	// Wave 4: KeptKaya / Recycle Bank Module (Read + Accounts + Purchase + Submodules: Kiosk/Welfare/AnnualTrash)
+	// Wave 4: KeptKaya / Recycle Bank Module (Read + Accounts + Purchase + Withdraw + Price + Submodules: Kiosk/Welfare/AnnualTrash)
 	if h.recycle != nil {
 		rcRoles := []string{domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleRecycleBankStaff, domain.RoleFinanceStaff, domain.RoleAnnualStaff}
 		v1.GET("/recycle/items", h.listRecycleItems, requireAnyRole(rcRoles...))
+		v1.POST("/recycle/items/:id/price", h.setRecycleItemPrice, requireAnyRole(rcRoles...))
 		v1.GET("/recycle/accounts", h.listRecycleAccounts, requireAnyRole(rcRoles...))
 		v1.POST("/recycle/purchases", h.recordRecyclePurchase, requireAnyRole(rcRoles...))
+		v1.POST("/recycle/withdrawals", h.createRecycleWithdrawal, requireAnyRole(rcRoles...))
 		v1.GET("/recycle/submodules", h.getRecycleSubmodules, requireAnyRole(rcRoles...))
 		v1.POST("/kiosks/:id/ingest", h.ingestKioskTelemetry, requireAnyRole(rcRoles...))
 	}
 
-	// Wave 5: Tabwater Module (Meters, Invoices, Readings, Payment & CSV Report Export)
+	// Wave 5: Tabwater Module (Meters, Periods, Invoices, Readings, Payment & CSV Report Export)
 	if h.tabwater != nil {
 		twRoles := []string{domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleTabwaterStaff, domain.RoleFinanceStaff}
+		v1.GET("/tabwater/periods", h.listTabwaterPeriods, requireAnyRole(twRoles...))
+		v1.POST("/tabwater/periods", h.createTabwaterPeriod, requireAnyRole(twRoles...))
 		v1.GET("/tabwater/meters", h.listTabwaterMeters, requireAnyRole(twRoles...))
+		v1.POST("/tabwater/meters", h.createTabwaterMeter, requireAnyRole(twRoles...))
 		v1.GET("/tabwater/invoices", h.listTabwaterInvoices, requireAnyRole(twRoles...))
 		v1.POST("/tabwater/readings", h.recordTabwaterReading, requireAnyRole(twRoles...))
 		v1.POST("/tabwater/invoices/:id/pay", h.payTabwaterInvoice, requireAnyRole(twRoles...))
@@ -538,4 +545,124 @@ func (h *handler) handleLineWebhook(c echo.Context) error {
 		"status":           "ok",
 		"processed_events": len(payload.Events),
 	})
+}
+
+func (h *handler) createUser(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	var cmd domain.CreateUserCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	created, err := h.identity.CreateUser(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusCreated, created)
+}
+
+func (h *handler) createZone(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	var cmd domain.CreateZoneCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	created, err := h.identity.CreateZone(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusCreated, created)
+}
+
+func (h *handler) createRecycleWithdrawal(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	var cmd domain.CreateRecycleWithdrawalCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	updated, err := h.recycle.WithdrawMemberBalance(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusOK, updated)
+}
+
+func (h *handler) setRecycleItemPrice(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || itemID <= 0 {
+		return writeProblem(c, http.StatusBadRequest, "invalid item id")
+	}
+	var cmd domain.SetRecycleItemPriceCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	cmd.ItemID = itemID
+	updated, err := h.recycle.SetRecycleItemPrice(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusOK, updated)
+}
+
+func (h *handler) listTabwaterPeriods(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	periods, err := h.tabwater.ListPeriods(c.Request().Context(), claims, reqOrgID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusOK, periods)
+}
+
+func (h *handler) createTabwaterPeriod(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	var cmd domain.CreateInvoicePeriodCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	created, err := h.tabwater.CreatePeriod(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusCreated, created)
+}
+
+func (h *handler) createTabwaterMeter(c echo.Context) error {
+	claims, _ := getClaims(c)
+	reqOrgID, err := parseRequestedOrgID(c)
+	if err != nil {
+		return mapError(c, err)
+	}
+	var cmd domain.CreateWaterMeterCommand
+	if err := c.Bind(&cmd); err != nil {
+		return writeProblem(c, http.StatusBadRequest, "invalid JSON payload")
+	}
+	created, err := h.tabwater.CreateMeter(c.Request().Context(), claims, reqOrgID, cmd)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return c.JSON(http.StatusCreated, created)
 }

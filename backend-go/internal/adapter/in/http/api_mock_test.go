@@ -355,6 +355,12 @@ func (m *mockAllModulesRepo) GetResidentOverview(_ context.Context, orgID *int64
 	}
 	return domain.ResidentOverview{Username: username, OrgID: orgID, WaterMeters: m.meters, Invoices: m.invoices}, nil
 }
+func (m *mockAllModulesRepo) CreateUser(_ context.Context, orgID int64, cmd domain.CreateUserCommand) (domain.UserSummary, error) {
+	return domain.UserSummary{ID: 777, OrgID: &orgID, Username: cmd.Username, FirstName: cmd.FirstName, Status: "active"}, m.err
+}
+func (m *mockAllModulesRepo) CreateZone(_ context.Context, orgID int64, cmd domain.CreateZoneCommand) (domain.Zone, error) {
+	return domain.Zone{ID: 88, OrgID: &orgID, Name: cmd.ZoneName, Status: "active"}, m.err
+}
 func (m *mockAllModulesRepo) ListItems(context.Context, *int64) ([]domain.InventoryItem, error) {
 	return m.invItems, m.err
 }
@@ -397,6 +403,12 @@ func (m *mockAllModulesRepo) GetSubmodulesOverview(context.Context, *int64) (dom
 func (m *mockAllModulesRepo) IngestKioskTelemetry(_ context.Context, _ *int64, cmd domain.KioskIngestCommand) (domain.KioskSummary, error) {
 	return domain.KioskSummary{ID: cmd.KioskID, OrgID: 1, Name: "Kiosk-HSG1", Status: cmd.Status, TotalWasteCount: 42 + cmd.WasteCountDelta}, m.err
 }
+func (m *mockAllModulesRepo) WithdrawMemberBalance(_ context.Context, orgID int64, cmd domain.CreateRecycleWithdrawalCommand) (domain.BankAccountSummary, error) {
+	return domain.BankAccountSummary{ID: cmd.AccountID, OrgID: orgID, Balance: 50, Status: "active"}, m.err
+}
+func (m *mockAllModulesRepo) SetRecycleItemPrice(_ context.Context, orgID int64, cmd domain.SetRecycleItemPriceCommand) (domain.RecycleItem, error) {
+	return domain.RecycleItem{ID: cmd.ItemID, OrgID: orgID, PriceFromDealer: cmd.PriceFromDealer, PriceForMember: cmd.PriceForMember, Point: cmd.Point}, m.err
+}
 func (m *mockAllModulesRepo) ListMeters(context.Context, *int64, int, int) ([]domain.WaterMeter, error) {
 	return m.meters, m.err
 }
@@ -408,6 +420,15 @@ func (m *mockAllModulesRepo) RecordMeterReading(_ context.Context, orgID int64, 
 }
 func (m *mockAllModulesRepo) PayInvoice(_ context.Context, _ *int64, cmd domain.PayWaterInvoiceCommand) (domain.WaterInvoice, error) {
 	return domain.WaterInvoice{ID: cmd.InvoiceID, Status: "paid"}, m.err
+}
+func (m *mockAllModulesRepo) ListPeriods(context.Context, *int64) ([]domain.InvoicePeriod, error) {
+	return []domain.InvoicePeriod{{ID: 1, OrgID: 1, PeriodName: "ตุลาคม 2569", Status: "active"}}, m.err
+}
+func (m *mockAllModulesRepo) CreatePeriod(_ context.Context, orgID int64, cmd domain.CreateInvoicePeriodCommand) (domain.InvoicePeriod, error) {
+	return domain.InvoicePeriod{ID: 2, OrgID: orgID, PeriodName: cmd.PeriodName, Status: "active"}, m.err
+}
+func (m *mockAllModulesRepo) CreateMeter(_ context.Context, orgID int64, cmd domain.CreateWaterMeterCommand) (domain.WaterMeter, error) {
+	return domain.WaterMeter{MeterID: 999, OrgID: orgID, UserID: cmd.UserID, MeterNumber: cmd.MeterNumber, Status: "active"}, m.err
 }
 
 func TestAPIMock_WaveModules(t *testing.T) {
@@ -457,6 +478,7 @@ func TestAPIMock_WaveModules(t *testing.T) {
 		"/api/v1/foodwaste/summary",
 		"/api/v1/recycle/items",
 		"/api/v1/recycle/submodules",
+		"/api/v1/tabwater/periods",
 		"/api/v1/tabwater/meters?limit=10&offset=0",
 		"/api/v1/tabwater/invoices?limit=10&offset=0&status=paid",
 		"/api/v1/reports/tabwater-invoices.csv?limit=10&offset=0",
@@ -524,13 +546,19 @@ func TestAPIMock_WaveModules(t *testing.T) {
 			payload    string
 			wantStatus int
 		}{
+			{"/api/v1/users", `{"username":"new_resident","firstname":"มานี","lastname":"ใจดี"}`, http.StatusCreated},
+			{"/api/v1/zones", `{"zone_name":"หมู่ 15 บ้านใหม่","location":"ต.ห้องแซง"}`, http.StatusCreated},
 			{"/api/v1/inventory/items", `{"code":"INV-99","name":"ท่อ PVC","unit":"เส้น","min_stock":5}`, http.StatusCreated},
 			{"/api/v1/inventory/transactions", `{"ref_no":"REQ-99","item_id":1,"requester_id":1,"quantity":2,"purpose":"ซ่อมท่อ"}`, http.StatusCreated},
 			{"/api/v1/inventory/transactions/10/decision", `{"decision":"APPROVED","comment":"อนุมัติ"}`, http.StatusOK},
 			{"/api/v1/foodwaste/batches", `{"user_id":1,"batch_code":"FW-99","start_date":"2026-10-24"}`, http.StatusCreated},
 			{"/api/v1/foodwaste/logs", `{"user_id":1,"weight_kg":4.0,"moisture":"good"}`, http.StatusCreated},
 			{"/api/v1/recycle/purchases", `{"trans_no":"KP-TX-99","user_id":1,"total_weight":5.5,"total_amount":45,"total_points":20}`, http.StatusCreated},
+			{"/api/v1/recycle/withdrawals", `{"account_id":1,"amount":20,"payout_method":"cash","note":"ถอนเงินสด"}`, http.StatusOK},
+			{"/api/v1/recycle/items/1/price", `{"price_from_dealer":12,"price_for_member":10,"point":20}`, http.StatusOK},
 			{"/api/v1/kiosks/1/ingest", `{"waste_count_delta":3,"status":"active"}`, http.StatusOK},
+			{"/api/v1/tabwater/periods", `{"period_name":"พฤศจิกายน 2569","start_date":"2026-11-01","end_date":"2026-11-30"}`, http.StatusCreated},
+			{"/api/v1/tabwater/meters", `{"user_id":1,"meternumber":"TW-NEW-01","submeter_name":"มานี ใจดี","meter_address":"99 หมู่ 1","initial_reading":0}`, http.StatusCreated},
 			{"/api/v1/tabwater/readings", `{"inv_no":"INV-99","meter_id":1,"period_id":1,"current_meter":150,"reserve_fee":10,"vat_percent":7}`, http.StatusCreated},
 			{"/api/v1/tabwater/invoices/5001/pay", `{"cashier_id":1}`, http.StatusOK},
 		}

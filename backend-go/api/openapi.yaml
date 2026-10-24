@@ -76,6 +76,11 @@ paths:
       responses:
         '200':
           description: Array of `UserSummary`
+    post:
+      summary: Wave 1.5 — Create new resident/user account
+      responses:
+        '201':
+          description: Created `UserSummary`
 
   /users/{id}/link-line:
     post:
@@ -95,6 +100,11 @@ paths:
       responses:
         '200':
           description: Array of `Zone`
+    post:
+      summary: Wave 1.5 — Create new zone
+      responses:
+        '201':
+          description: Created `Zone`
 
   /resident/overview:
     get:
@@ -181,6 +191,25 @@ paths:
         '201':
           description: Created `RecyclePurchaseTransaction`
 
+  /recycle/withdrawals:
+    post:
+      summary: Wave 4 — Withdraw member recycle bank balance (`cash` / `transfer`) & record `kp_money_requests`
+      responses:
+        '200':
+          description: Updated `BankAccountSummary`
+
+  /recycle/items/{id}/price:
+    post:
+      summary: Wave 4 — Set/update recyclable item price & points (`kp_tbank_items_pricepoint`)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Updated `RecycleItem`
+
   /recycle/submodules:
     get:
       summary: Wave 4 & 6 — Get IoT Smart Kiosks, Welfare Fund configs/payouts & Annual Trash subscriptions
@@ -210,6 +239,23 @@ paths:
       responses:
         '200':
           description: Array of `WaterMeter`
+    post:
+      summary: Wave 5 — Register new water meter (`tw_meter_infos`)
+      responses:
+        '201':
+          description: Created `WaterMeter`
+
+  /tabwater/periods:
+    get:
+      summary: Wave 5 — List water billing periods (`invoice_period`)
+      responses:
+        '200':
+          description: Array of `InvoicePeriod`
+    post:
+      summary: Wave 5 — Open new monthly water billing period (`invoice_period`)
+      responses:
+        '201':
+          description: Created `InvoicePeriod`
 
   /tabwater/invoices:
     get:

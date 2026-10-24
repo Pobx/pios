@@ -527,3 +527,270 @@ func (s *Store) IngestKioskTelemetry(ctx context.Context, orgID *int64, cmd doma
 	}
 	return k, nil
 }
+
+// ---- Self-Sufficiency Master Data & Monthly Operational Queries -------------
+
+const (
+	createUserSQL = `
+INSERT INTO users (
+    org_id, username, prefix, firstname, lastname, phone, address,
+    zone_id, subzone_id, tambon_code, district_code, province_code,
+    age, weight, height, status, old_id, created_at, updated_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    COALESCE(NULLIF($8::bigint, 0), (SELECT id FROM zones WHERE org_id = $1 ORDER BY id LIMIT 1), 1),
+    COALESCE(NULLIF($9::bigint, 0), (SELECT id FROM subzones ORDER BY id LIMIT 1), 1),
+    COALESCE((SELECT tambon_code FROM users ORDER BY id LIMIT 1), 350805),
+    COALESCE((SELECT district_code FROM users ORDER BY id LIMIT 1), 3508),
+    COALESCE((SELECT province_code FROM users ORDER BY id LIMIT 1), 35),
+    0, 0, 0, 'active', 0, NOW(), NOW()
+)
+RETURNING id, org_id, COALESCE(username, ''), COALESCE(prefix, ''), COALESCE(firstname, ''), COALESCE(lastname, ''), COALESCE(email, ''), COALESCE(phone, ''), COALESCE(address, ''), zone_id, subzone_id, COALESCE(line_user_id, ''), COALESCE(status, 'active')
+`
+	createZoneSQL = `
+INSERT INTO zones (
+    org_id, zone_name, location, status, tambon_id, lat, long, created_at, updated_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    'active',
+    COALESCE((SELECT tambon_id FROM zones ORDER BY id LIMIT 1), 350805),
+    '15.8000',
+    '104.1000',
+    NOW(),
+    NOW()
+)
+RETURNING id, org_id, COALESCE(zone_name, ''), COALESCE(status, 'active')
+`
+	withdrawMemberBalanceSQL = `
+WITH updated_acc AS (
+    UPDATE kp_bank_accounts
+    SET balance    = balance - $3,
+        updated_at = NOW()
+    WHERE id = $2
+      AND ($1::bigint IS NULL OR org_id = $1)
+      AND balance >= $3
+    RETURNING id, COALESCE(org_id, 0) AS org_id, user_id, COALESCE(entity_type, '') AS entity_type, COALESCE(account_no, '') AS account_no, COALESCE(balance, 0)::float8 AS balance, COALESCE(points, 0) AS points, COALESCE(status, 'active') AS status
+),
+inserted_req AS (
+    INSERT INTO kp_money_requests (
+        user_id, org_id, amount, verification_code, status, hold_status, is_proxy, payout_method, payout_note, payout_date, completed_at, created_at, updated_at
+    )
+    SELECT user_id, org_id, $3, 'WD0001', 'completed', 'settled', false, $4, $5, CURRENT_DATE, NOW(), NOW(), NOW()
+    FROM updated_acc
+)
+SELECT id, org_id, user_id, entity_type, account_no, balance, points, status
+FROM updated_acc
+`
+	setRecycleItemPriceSQL = `
+WITH inserted_pp AS (
+    INSERT INTO kp_tbank_items_pricepoint (
+        org_id, kp_items_idfk, price_from_dealer, price_for_member, point, type, kp_units_idfk, effective_date, status, deleted, created_at, updated_at
+    )
+    VALUES (
+        $1, $2, $3, $4, $5, 'tbank',
+        COALESCE((SELECT id FROM kp_tbank_items_units ORDER BY id LIMIT 1), 1),
+        CURRENT_DATE, 'active', '0', NOW(), NOW()
+    )
+    RETURNING kp_items_idfk, price_from_dealer, price_for_member, point
+)
+SELECT i.id,
+       COALESCE(i.org_id, 0),
+       COALESCE(i.kp_itemscode, ''),
+       COALESCE(i.kp_itemsname, ''),
+       COALESCE(i.kp_items_group_idfk, 0),
+       COALESCE(g.kp_items_groupname, ''),
+       COALESCE(i.status, 'active'),
+       pp.price_from_dealer::float8,
+       pp.price_for_member::float8,
+       pp.point::float8
+FROM kp_tbank_items i
+JOIN inserted_pp pp ON pp.kp_items_idfk = i.id
+LEFT JOIN kp_tbank_items_groups g ON g.id = i.kp_items_group_idfk
+WHERE i.id = $2
+`
+	listPeriodsSQL = `
+SELECT id,
+       COALESCE(org_id, 0),
+       COALESCE(inv_p_name, ''),
+       COALESCE(startdate::text, ''),
+       COALESCE(enddate::text, ''),
+       COALESCE(status, 'active')
+FROM invoice_period
+WHERE ($1::bigint IS NULL OR org_id = $1 OR org_id IS NULL)
+ORDER BY id DESC
+LIMIT 50
+`
+	createPeriodSQL = `
+INSERT INTO invoice_period (
+    org_id, inv_p_name, inv_p_name_int, budgetyear_id, startdate, enddate, status, created_at, updated_at
+)
+VALUES (
+    $1,
+    $2,
+    $2,
+    COALESCE((SELECT id FROM budget_year ORDER BY id DESC LIMIT 1), 1),
+    COALESCE(NULLIF($3, '')::date, CURRENT_DATE),
+    COALESCE(NULLIF($4, '')::date, (CURRENT_DATE + INTERVAL '30 days')::date),
+    'active',
+    NOW(),
+    NOW()
+)
+RETURNING id, COALESCE(org_id, 0), COALESCE(inv_p_name, ''), COALESCE(startdate::text, ''), COALESCE(enddate::text, ''), COALESCE(status, 'active')
+`
+	createMeterSQL = `
+INSERT INTO tw_meter_infos (
+    meter_id, org_id, user_id, meternumber, factory_no, submeter_name, meter_address,
+    undertake_zone_id, undertake_subzone_id, acceptance_date, status, owe_count, cutmeter,
+    payment_id, last_meter_recording, old_meter_id, created_at, updated_at
+)
+VALUES (
+    COALESCE((SELECT MAX(meter_id) FROM tw_meter_infos), 0) + 1,
+    $1,
+    $2,
+    $3,
+    $3,
+    $4,
+    $5,
+    COALESCE(NULLIF($6::bigint, 0), (SELECT id FROM zones WHERE org_id = $1 ORDER BY id LIMIT 1), 1),
+    COALESCE(NULLIF($7::bigint, 0), (SELECT id FROM subzones ORDER BY id LIMIT 1), 1),
+    CURRENT_DATE,
+    'active',
+    0,
+    '0',
+    1,
+    $8,
+    0,
+    NOW(),
+    NOW()
+)
+RETURNING meter_id, COALESCE(org_id, 0), COALESCE(user_id, 0), COALESCE(meternumber, ''), COALESCE(submeter_name, ''), COALESCE(meter_address, ''), COALESCE(undertake_zone_id, 0), COALESCE(undertake_subzone_id, 0), COALESCE(status, 'active'), COALESCE(owe_count, 0), COALESCE(cutmeter, '0'), COALESCE(last_meter_recording, 0)
+`
+)
+
+func (s *Store) CreateUser(ctx context.Context, orgID int64, cmd domain.CreateUserCommand) (domain.UserSummary, error) {
+	var u domain.UserSummary
+	err := s.db.QueryRow(
+		ctx, createUserSQL,
+		orgID, strings.TrimSpace(cmd.Username), strings.TrimSpace(cmd.Prefix),
+		strings.TrimSpace(cmd.FirstName), strings.TrimSpace(cmd.LastName),
+		strings.TrimSpace(cmd.Phone), strings.TrimSpace(cmd.Address),
+		cmd.ZoneID, cmd.SubzoneID,
+	).Scan(
+		&u.ID, &u.OrgID, &u.Username, &u.Prefix, &u.FirstName, &u.LastName,
+		&u.Email, &u.Phone, &u.Address, &u.ZoneID, &u.SubzoneID, &u.LineUserID, &u.Status,
+	)
+	if err != nil {
+		return domain.UserSummary{}, fmt.Errorf("create user: %w", err)
+	}
+	return u, nil
+}
+
+func (s *Store) CreateZone(ctx context.Context, orgID int64, cmd domain.CreateZoneCommand) (domain.Zone, error) {
+	var z domain.Zone
+	z.Subzones = []domain.Subzone{}
+	loc := strings.TrimSpace(cmd.Location)
+	if loc == "" {
+		loc = strings.TrimSpace(cmd.ZoneName)
+	}
+	err := s.db.QueryRow(ctx, createZoneSQL, orgID, strings.TrimSpace(cmd.ZoneName), loc).Scan(
+		&z.ID, &z.OrgID, &z.Name, &z.Status,
+	)
+	if err != nil {
+		return domain.Zone{}, fmt.Errorf("create zone: %w", err)
+	}
+	return z, nil
+}
+
+func (s *Store) WithdrawMemberBalance(ctx context.Context, orgID int64, cmd domain.CreateRecycleWithdrawalCommand) (domain.BankAccountSummary, error) {
+	var acc domain.BankAccountSummary
+	err := s.db.QueryRow(
+		ctx, withdrawMemberBalanceSQL,
+		orgID, cmd.AccountID, cmd.Amount, cmd.PayoutMethod, strings.TrimSpace(cmd.Note),
+	).Scan(
+		&acc.ID, &acc.OrgID, &acc.UserID, &acc.EntityType, &acc.AccountNo, &acc.Balance, &acc.Points, &acc.Status,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.BankAccountSummary{}, domain.ErrBadRequest
+	}
+	if err != nil {
+		return domain.BankAccountSummary{}, fmt.Errorf("withdraw member balance: %w", err)
+	}
+	return acc, nil
+}
+
+func (s *Store) SetRecycleItemPrice(ctx context.Context, orgID int64, cmd domain.SetRecycleItemPriceCommand) (domain.RecycleItem, error) {
+	var item domain.RecycleItem
+	err := s.db.QueryRow(
+		ctx, setRecycleItemPriceSQL,
+		orgID, cmd.ItemID, cmd.PriceFromDealer, cmd.PriceForMember, cmd.Point,
+	).Scan(
+		&item.ID, &item.OrgID, &item.Code, &item.Name, &item.GroupID, &item.GroupName,
+		&item.Status, &item.PriceFromDealer, &item.PriceForMember, &item.Point,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.RecycleItem{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.RecycleItem{}, fmt.Errorf("set recycle item price: %w", err)
+	}
+	return item, nil
+}
+
+func (s *Store) ListPeriods(ctx context.Context, orgID *int64) ([]domain.InvoicePeriod, error) {
+	rows, err := s.db.Query(ctx, listPeriodsSQL, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("query invoice periods: %w", err)
+	}
+	defer rows.Close()
+
+	out := []domain.InvoicePeriod{}
+	for rows.Next() {
+		var p domain.InvoicePeriod
+		if err := rows.Scan(&p.ID, &p.OrgID, &p.PeriodName, &p.StartDate, &p.EndDate, &p.Status); err != nil {
+			return nil, fmt.Errorf("scan invoice period: %w", err)
+		}
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate invoice periods: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Store) CreatePeriod(ctx context.Context, orgID int64, cmd domain.CreateInvoicePeriodCommand) (domain.InvoicePeriod, error) {
+	var p domain.InvoicePeriod
+	err := s.db.QueryRow(
+		ctx, createPeriodSQL,
+		orgID, strings.TrimSpace(cmd.PeriodName), strings.TrimSpace(cmd.StartDate), strings.TrimSpace(cmd.EndDate),
+	).Scan(&p.ID, &p.OrgID, &p.PeriodName, &p.StartDate, &p.EndDate, &p.Status)
+	if err != nil {
+		return domain.InvoicePeriod{}, fmt.Errorf("create invoice period: %w", err)
+	}
+	return p, nil
+}
+
+func (s *Store) CreateMeter(ctx context.Context, orgID int64, cmd domain.CreateWaterMeterCommand) (domain.WaterMeter, error) {
+	var m domain.WaterMeter
+	err := s.db.QueryRow(
+		ctx, createMeterSQL,
+		orgID, cmd.UserID, strings.TrimSpace(cmd.MeterNumber), strings.TrimSpace(cmd.SubmeterName),
+		strings.TrimSpace(cmd.MeterAddress), cmd.ZoneID, cmd.SubzoneID, cmd.InitialReading,
+	).Scan(
+		&m.MeterID, &m.OrgID, &m.UserID, &m.MeterNumber, &m.SubmeterName, &m.MeterAddress,
+		&m.UndertakeZoneID, &m.UndertakeSubzoneID, &m.Status, &m.OweCount, &m.CutMeter, &m.LastMeterRecording,
+	)
+	if err != nil {
+		return domain.WaterMeter{}, fmt.Errorf("create water meter: %w", err)
+	}
+	return m, nil
+}

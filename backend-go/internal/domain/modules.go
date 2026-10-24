@@ -89,6 +89,8 @@ type IdentityRepository interface {
 	ListZones(ctx context.Context, orgID *int64) ([]Zone, error)
 	LinkUserLineAccount(ctx context.Context, orgID *int64, userID int64, lineUserID string) (UserSummary, error)
 	GetResidentOverview(ctx context.Context, orgID *int64, username string) (ResidentOverview, error)
+	CreateUser(ctx context.Context, orgID int64, cmd CreateUserCommand) (UserSummary, error)
+	CreateZone(ctx context.Context, orgID int64, cmd CreateZoneCommand) (Zone, error)
 }
 
 // ---- Wave 2: Inventory Module -----------------------------------------------
@@ -228,6 +230,8 @@ type RecycleRepository interface {
 	RecordPurchase(ctx context.Context, orgID int64, cmd RecordRecyclePurchaseCommand) (RecyclePurchaseTransaction, error)
 	GetSubmodulesOverview(ctx context.Context, orgID *int64) (RecycleSubmodulesOverview, error)
 	IngestKioskTelemetry(ctx context.Context, orgID *int64, cmd KioskIngestCommand) (KioskSummary, error)
+	WithdrawMemberBalance(ctx context.Context, orgID int64, cmd CreateRecycleWithdrawalCommand) (BankAccountSummary, error)
+	SetRecycleItemPrice(ctx context.Context, orgID int64, cmd SetRecycleItemPriceCommand) (RecycleItem, error)
 }
 
 // ---- Wave 5: Tabwater Module (Meters, Invoices & Progressive Tariff) --------
@@ -340,9 +344,21 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
+type InvoicePeriod struct {
+	ID         int64  `json:"id"`
+	OrgID      int64  `json:"org_id"`
+	PeriodName string `json:"period_name"`
+	StartDate  string `json:"start_date"`
+	EndDate    string `json:"end_date"`
+	Status     string `json:"status"`
+}
+
 type TabwaterRepository interface {
 	ListMeters(ctx context.Context, orgID *int64, limit, offset int) ([]WaterMeter, error)
 	ListInvoices(ctx context.Context, orgID *int64, status string, limit, offset int) ([]WaterInvoice, error)
 	RecordMeterReading(ctx context.Context, orgID int64, cmd RecordMeterReadingCommand) (WaterInvoice, error)
 	PayInvoice(ctx context.Context, orgID *int64, cmd PayWaterInvoiceCommand) (WaterInvoice, error)
+	ListPeriods(ctx context.Context, orgID *int64) ([]InvoicePeriod, error)
+	CreatePeriod(ctx context.Context, orgID int64, cmd CreateInvoicePeriodCommand) (InvoicePeriod, error)
+	CreateMeter(ctx context.Context, orgID int64, cmd CreateWaterMeterCommand) (WaterMeter, error)
 }

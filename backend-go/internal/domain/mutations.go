@@ -239,3 +239,99 @@ func VerifyLineWebhookSignature(channelSecret string, body []byte, signatureBase
 	}
 	return hmac.Equal(expected, got)
 }
+
+// ---- Self-Sufficiency Master Data & Monthly Operational Commands ------------
+
+type CreateUserCommand struct {
+	Username  string `json:"username"`
+	Prefix    string `json:"prefix"`
+	FirstName string `json:"firstname"`
+	LastName  string `json:"lastname"`
+	Phone     string `json:"phone"`
+	Address   string `json:"address"`
+	ZoneID    int64  `json:"zone_id"`
+	SubzoneID int64  `json:"subzone_id"`
+}
+
+func (cmd CreateUserCommand) Validate() error {
+	if strings.TrimSpace(cmd.Username) == "" || strings.TrimSpace(cmd.FirstName) == "" {
+		return ErrBadRequest
+	}
+	return nil
+}
+
+type CreateZoneCommand struct {
+	ZoneName string `json:"zone_name"`
+	Location string `json:"location"`
+}
+
+func (cmd CreateZoneCommand) Validate() error {
+	if strings.TrimSpace(cmd.ZoneName) == "" {
+		return ErrBadRequest
+	}
+	return nil
+}
+
+type CreateRecycleWithdrawalCommand struct {
+	AccountID    int64   `json:"account_id"`
+	Amount       float64 `json:"amount"`
+	PayoutMethod string  `json:"payout_method"` // "cash" | "transfer"
+	Note         string  `json:"note"`
+}
+
+func (cmd CreateRecycleWithdrawalCommand) Validate() error {
+	if cmd.AccountID <= 0 || cmd.Amount <= 0 {
+		return ErrBadRequest
+	}
+	m := strings.ToLower(strings.TrimSpace(cmd.PayoutMethod))
+	switch m {
+	case "", "cash", "transfer":
+	default:
+		return ErrBadRequest
+	}
+	return nil
+}
+
+type SetRecycleItemPriceCommand struct {
+	ItemID          int64   `json:"item_id"`
+	PriceFromDealer float64 `json:"price_from_dealer"`
+	PriceForMember  float64 `json:"price_for_member"`
+	Point           float64 `json:"point"`
+}
+
+func (cmd SetRecycleItemPriceCommand) Validate() error {
+	if cmd.ItemID <= 0 || cmd.PriceForMember < 0 || cmd.PriceFromDealer < 0 || cmd.Point < 0 {
+		return ErrBadRequest
+	}
+	return nil
+}
+
+type CreateInvoicePeriodCommand struct {
+	PeriodName string `json:"period_name"`
+	StartDate  string `json:"start_date"` // YYYY-MM-DD
+	EndDate    string `json:"end_date"`   // YYYY-MM-DD
+}
+
+func (cmd CreateInvoicePeriodCommand) Validate() error {
+	if strings.TrimSpace(cmd.PeriodName) == "" {
+		return ErrBadRequest
+	}
+	return nil
+}
+
+type CreateWaterMeterCommand struct {
+	UserID         int64  `json:"user_id"`
+	MeterNumber    string `json:"meternumber"`
+	SubmeterName   string `json:"submeter_name"`
+	MeterAddress   string `json:"meter_address"`
+	ZoneID         int64  `json:"undertake_zone_id"`
+	SubzoneID      int64  `json:"undertake_subzone_id"`
+	InitialReading int    `json:"initial_reading"`
+}
+
+func (cmd CreateWaterMeterCommand) Validate() error {
+	if cmd.UserID <= 0 || strings.TrimSpace(cmd.MeterNumber) == "" || cmd.InitialReading < 0 {
+		return ErrBadRequest
+	}
+	return nil
+}

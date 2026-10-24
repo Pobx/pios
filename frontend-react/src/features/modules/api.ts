@@ -338,6 +338,69 @@ export interface RecycleSubmodulesOverview {
 export const fetchRecycleSubmodules = async (): Promise<RecycleSubmodulesOverview> =>
   (await api.get<RecycleSubmodulesOverview>('/v1/recycle/submodules')).data
 
+// ---- Operational Self-Sufficiency: Master Data, Withdrawals, Pricing & Periods ----
+
+export interface CreateUserInput {
+  username: string
+  prefix?: string
+  firstname: string
+  lastname?: string
+  phone?: string
+  address?: string
+  zone_id?: number
+  subzone_id?: number
+}
+
+export const createUser = async (payload: CreateUserInput): Promise<UserSummary> =>
+  (await api.post<UserSummary>('/v1/users', payload)).data
+
+export const createZone = async (payload: { zone_name: string; location?: string }): Promise<Zone> =>
+  (await api.post<Zone>('/v1/zones', payload)).data
+
+export const withdrawRecycleBalance = async (payload: {
+  account_id: number
+  amount: number
+  payout_method?: 'cash' | 'transfer'
+  note?: string
+}): Promise<BankAccountSummary> =>
+  (await api.post<BankAccountSummary>('/v1/recycle/withdrawals', payload)).data
+
+export const setRecycleItemPrice = async (
+  itemId: number,
+  payload: { price_from_dealer: number; price_for_member: number; point: number },
+): Promise<RecycleItem> =>
+  (await api.post<RecycleItem>(`/v1/recycle/items/${itemId}/price`, payload)).data
+
+export interface InvoicePeriod {
+  id: number
+  org_id: number
+  period_name: string
+  start_date: string
+  end_date: string
+  status: string
+}
+
+export const fetchTabwaterPeriods = async (): Promise<InvoicePeriod[]> =>
+  (await api.get<InvoicePeriod[]>('/v1/tabwater/periods')).data
+
+export const createTabwaterPeriod = async (payload: {
+  period_name: string
+  start_date?: string
+  end_date?: string
+}): Promise<InvoicePeriod> =>
+  (await api.post<InvoicePeriod>('/v1/tabwater/periods', payload)).data
+
+export const createTabwaterMeter = async (payload: {
+  user_id: number
+  meternumber: string
+  submeter_name: string
+  meter_address?: string
+  undertake_zone_id?: number
+  undertake_subzone_id?: number
+  initial_reading?: number
+}): Promise<WaterMeter> =>
+  (await api.post<WaterMeter>('/v1/tabwater/meters', payload)).data
+
 // ---- CSV Export Helper (UTF-8 with BOM for Excel) ---------------------------
 
 export function exportRowsToCsv(filename: string, headers: string[], rows: (string | number)[][]): string {

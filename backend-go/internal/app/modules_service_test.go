@@ -33,6 +33,12 @@ func (f *fakeIdentityRepo) GetResidentOverview(_ context.Context, orgID *int64, 
 	}
 	return domain.ResidentOverview{Username: username, OrgID: orgID}, nil
 }
+func (f *fakeIdentityRepo) CreateUser(_ context.Context, orgID int64, cmd domain.CreateUserCommand) (domain.UserSummary, error) {
+	return domain.UserSummary{ID: 500, OrgID: &orgID, Username: cmd.Username, FirstName: cmd.FirstName}, f.err
+}
+func (f *fakeIdentityRepo) CreateZone(_ context.Context, orgID int64, cmd domain.CreateZoneCommand) (domain.Zone, error) {
+	return domain.Zone{ID: 50, OrgID: &orgID, Name: cmd.ZoneName, Status: "active"}, f.err
+}
 
 type fakeInventoryRepo struct {
 	items []domain.InventoryItem
@@ -121,6 +127,12 @@ func (f *fakeRecycleRepo) GetSubmodulesOverview(context.Context, *int64) (domain
 func (f *fakeRecycleRepo) IngestKioskTelemetry(_ context.Context, _ *int64, cmd domain.KioskIngestCommand) (domain.KioskSummary, error) {
 	return domain.KioskSummary{ID: cmd.KioskID, OrgID: 1, Name: "Kiosk-01", Status: cmd.Status, TotalWasteCount: cmd.WasteCountDelta}, f.err
 }
+func (f *fakeRecycleRepo) WithdrawMemberBalance(_ context.Context, orgID int64, cmd domain.CreateRecycleWithdrawalCommand) (domain.BankAccountSummary, error) {
+	return domain.BankAccountSummary{ID: cmd.AccountID, OrgID: orgID, Balance: 50, Status: "active"}, f.err
+}
+func (f *fakeRecycleRepo) SetRecycleItemPrice(_ context.Context, orgID int64, cmd domain.SetRecycleItemPriceCommand) (domain.RecycleItem, error) {
+	return domain.RecycleItem{ID: cmd.ItemID, OrgID: orgID, PriceFromDealer: cmd.PriceFromDealer, PriceForMember: cmd.PriceForMember, Point: cmd.Point}, f.err
+}
 
 type fakeTabwaterRepo struct {
 	meters   []domain.WaterMeter
@@ -145,6 +157,15 @@ func (f *fakeTabwaterRepo) PayInvoice(_ context.Context, _ *int64, cmd domain.Pa
 		return domain.WaterInvoice{}, f.err
 	}
 	return domain.WaterInvoice{ID: cmd.InvoiceID, Status: "paid"}, nil
+}
+func (f *fakeTabwaterRepo) ListPeriods(context.Context, *int64) ([]domain.InvoicePeriod, error) {
+	return []domain.InvoicePeriod{{ID: 1, OrgID: 1, PeriodName: "ตุลาคม 2569", Status: "active"}}, f.err
+}
+func (f *fakeTabwaterRepo) CreatePeriod(_ context.Context, orgID int64, cmd domain.CreateInvoicePeriodCommand) (domain.InvoicePeriod, error) {
+	return domain.InvoicePeriod{ID: 2, OrgID: orgID, PeriodName: cmd.PeriodName, Status: "active"}, f.err
+}
+func (f *fakeTabwaterRepo) CreateMeter(_ context.Context, orgID int64, cmd domain.CreateWaterMeterCommand) (domain.WaterMeter, error) {
+	return domain.WaterMeter{MeterID: 999, OrgID: orgID, UserID: cmd.UserID, MeterNumber: cmd.MeterNumber, Status: "active"}, f.err
 }
 
 func TestIdentityService(t *testing.T) {

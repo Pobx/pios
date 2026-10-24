@@ -4,7 +4,9 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { ErrorMessage } from '@/shared/ui/ErrorMessage'
 import {
   fetchUsers,
+  createUser,
   fetchZones,
+  createZone,
   linkUserLineAccount,
   fetchResidentOverview,
   fetchInventoryItems,
@@ -16,10 +18,15 @@ import {
   createCompostBatch,
   createWasteLog,
   fetchRecycleItems,
+  setRecycleItemPrice,
   fetchRecycleAccounts,
+  withdrawRecycleBalance,
   fetchRecycleSubmodules,
   recordRecyclePurchase,
   fetchTabwaterMeters,
+  createTabwaterMeter,
+  fetchTabwaterPeriods,
+  createTabwaterPeriod,
   fetchTabwaterInvoices,
   recordTabwaterReading,
   payTabwaterInvoice,
@@ -211,6 +218,12 @@ export function UsersPage() {
   const [lineUserId, setLineUserId] = useState('')
   const [staffCode, setStaffCode] = useState('')
 
+  const [newUsername, setNewUsername] = useState('')
+  const [newFirstname, setNewFirstname] = useState('')
+  const [newLastname, setNewLastname] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newZoneName, setNewZoneName] = useState('')
+
   const linkMut = useMutation({
     mutationFn: () =>
       linkUserLineAccount(Number(targetUserId), {
@@ -226,10 +239,99 @@ export function UsersPage() {
     },
   })
 
+  const createUserMut = useMutation({
+    mutationFn: () =>
+      createUser({
+        username: newUsername,
+        prefix: 'คุณ',
+        firstname: newFirstname,
+        lastname: newLastname,
+        phone: newPhone,
+      }),
+    onSuccess: () => {
+      setNewUsername('')
+      setNewFirstname('')
+      setNewLastname('')
+      setNewPhone('')
+      void qc.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+
+  const createZoneMut = useMutation({
+    mutationFn: () => createZone({ zone_name: newZoneName }),
+    onSuccess: () => {
+      setNewZoneName('')
+      void qc.invalidateQueries({ queryKey: ['zones'] })
+    },
+  })
+
   return (
     <section className="space-y-8">
       <div>
         <h1 className="mb-4 text-2xl font-semibold">Users & Zones</h1>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <form
+            aria-label="Create User"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              createUserMut.mutate()
+            }}
+          >
+            <input
+              aria-label="New Username"
+              className="rounded border px-2 py-1"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder="Username (e.g. user99)"
+            />
+            <input
+              aria-label="First Name"
+              className="rounded border px-2 py-1"
+              value={newFirstname}
+              onChange={(e) => setNewFirstname(e.target.value)}
+              placeholder="First Name"
+            />
+            <input
+              aria-label="Last Name"
+              className="rounded border px-2 py-1"
+              value={newLastname}
+              onChange={(e) => setNewLastname(e.target.value)}
+              placeholder="Last Name"
+            />
+            <input
+              aria-label="Phone Number"
+              className="rounded border px-2 py-1"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="Phone"
+            />
+            <button type="submit" className="rounded bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-800">
+              Create User
+            </button>
+          </form>
+
+          <form
+            aria-label="Create Zone"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              createZoneMut.mutate()
+            }}
+          >
+            <input
+              aria-label="New Zone Name"
+              className="rounded border px-2 py-1"
+              value={newZoneName}
+              onChange={(e) => setNewZoneName(e.target.value)}
+              placeholder="Zone Name (e.g. หมู่ 12)"
+            />
+            <button type="submit" className="rounded bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-800">
+              Create Zone
+            </button>
+          </form>
+        </div>
 
         <form
           aria-label="Link LINE Account"
@@ -710,6 +812,15 @@ export function RecycleBankPage() {
   const [totalAmount, setTotalAmount] = useState('')
   const [totalPoints, setTotalPoints] = useState('10')
 
+  const [withdrawAccId, setWithdrawAccId] = useState('1')
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawNote, setWithdrawNote] = useState('')
+
+  const [priceItemId, setPriceItemId] = useState('1')
+  const [memberPrice, setMemberPrice] = useState('')
+  const [dealerPrice, setDealerPrice] = useState('')
+  const [itemPoint, setItemPoint] = useState('10')
+
   const purchaseMut = useMutation({
     mutationFn: () =>
       recordRecyclePurchase({
@@ -724,6 +835,35 @@ export function RecycleBankPage() {
       setTotalWeight('')
       setTotalAmount('')
       void qc.invalidateQueries({ queryKey: ['recycle-accounts'] })
+    },
+  })
+
+  const withdrawMut = useMutation({
+    mutationFn: () =>
+      withdrawRecycleBalance({
+        account_id: Number(withdrawAccId) || 1,
+        amount: Number(withdrawAmount),
+        payout_method: 'cash',
+        note: withdrawNote,
+      }),
+    onSuccess: () => {
+      setWithdrawAmount('')
+      setWithdrawNote('')
+      void qc.invalidateQueries({ queryKey: ['recycle-accounts'] })
+    },
+  })
+
+  const priceMut = useMutation({
+    mutationFn: () =>
+      setRecycleItemPrice(Number(priceItemId) || 1, {
+        price_from_dealer: Number(dealerPrice) || Number(memberPrice),
+        price_for_member: Number(memberPrice),
+        point: Number(itemPoint) || 0,
+      }),
+    onSuccess: () => {
+      setMemberPrice('')
+      setDealerPrice('')
+      void qc.invalidateQueries({ queryKey: ['recycle-items'] })
     },
   })
 
@@ -751,7 +891,7 @@ export function RecycleBankPage() {
 
         <form
           aria-label="Record Recycle Purchase"
-          className="mb-6 flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+          className="mb-4 flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
           onSubmit={(e) => {
             e.preventDefault()
             purchaseMut.mutate()
@@ -796,6 +936,83 @@ export function RecycleBankPage() {
             Record Purchase
           </button>
         </form>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <form
+            aria-label="Withdraw Member Balance"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              withdrawMut.mutate()
+            }}
+          >
+            <input
+              aria-label="Withdraw Account ID"
+              className="w-20 rounded border px-2 py-1"
+              placeholder="Acc ID"
+              value={withdrawAccId}
+              onChange={(e) => setWithdrawAccId(e.target.value)}
+            />
+            <input
+              aria-label="Withdraw Amount"
+              className="w-28 rounded border px-2 py-1"
+              placeholder="Amount (THB)"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+            />
+            <input
+              aria-label="Withdraw Note"
+              className="rounded border px-2 py-1"
+              placeholder="Note / Ref"
+              value={withdrawNote}
+              onChange={(e) => setWithdrawNote(e.target.value)}
+            />
+            <button type="submit" className="rounded bg-amber-600 px-3 py-1 text-white hover:bg-amber-700">
+              Withdraw Balance
+            </button>
+          </form>
+
+          <form
+            aria-label="Update Item Price"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              priceMut.mutate()
+            }}
+          >
+            <input
+              aria-label="Price Item ID"
+              className="w-20 rounded border px-2 py-1"
+              placeholder="Item ID"
+              value={priceItemId}
+              onChange={(e) => setPriceItemId(e.target.value)}
+            />
+            <input
+              aria-label="Member Price (THB)"
+              className="w-28 rounded border px-2 py-1"
+              placeholder="Member THB"
+              value={memberPrice}
+              onChange={(e) => setMemberPrice(e.target.value)}
+            />
+            <input
+              aria-label="Dealer Price (THB)"
+              className="w-28 rounded border px-2 py-1"
+              placeholder="Dealer THB"
+              value={dealerPrice}
+              onChange={(e) => setDealerPrice(e.target.value)}
+            />
+            <input
+              aria-label="Item Points"
+              className="w-20 rounded border px-2 py-1"
+              placeholder="Points"
+              value={itemPoint}
+              onChange={(e) => setItemPoint(e.target.value)}
+            />
+            <button type="submit" className="rounded bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-800">
+              Set Item Price
+            </button>
+          </form>
+        </div>
 
         {isPending && <Spinner />}
         {error && <ErrorMessage error={error} onRetry={() => void refetch()} />}
@@ -904,11 +1121,18 @@ export function TabwaterPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<WaterInvoice | null>(null)
   const metersQ = useQuery({ queryKey: ['tabwater-meters'], queryFn: () => fetchTabwaterMeters({ limit: 50, offset: 0 }) })
   const invoicesQ = useQuery({ queryKey: ['tabwater-invoices'], queryFn: () => fetchTabwaterInvoices({ limit: 50, offset: 0 }) })
+  const periodsQ = useQuery({ queryKey: ['tabwater-periods'], queryFn: fetchTabwaterPeriods })
 
   const [invNo, setInvNo] = useState('')
   const [meterId, setMeterId] = useState('1')
   const [periodId, setPeriodId] = useState('1')
   const [currentMeter, setCurrentMeter] = useState('')
+
+  const [newPeriodName, setNewPeriodName] = useState('')
+  const [newMeterUserId, setNewMeterUserId] = useState('1')
+  const [newMeterNo, setNewMeterNo] = useState('')
+  const [newSubscriberName, setNewSubscriberName] = useState('')
+  const [newMeterAddr, setNewMeterAddr] = useState('')
 
   const readingMut = useMutation({
     mutationFn: () =>
@@ -928,6 +1152,30 @@ export function TabwaterPage() {
     },
   })
 
+  const createPeriodMut = useMutation({
+    mutationFn: () => createTabwaterPeriod({ period_name: newPeriodName }),
+    onSuccess: () => {
+      setNewPeriodName('')
+      void qc.invalidateQueries({ queryKey: ['tabwater-periods'] })
+    },
+  })
+
+  const createMeterMut = useMutation({
+    mutationFn: () =>
+      createTabwaterMeter({
+        user_id: Number(newMeterUserId) || 1,
+        meternumber: newMeterNo,
+        submeter_name: newSubscriberName,
+        meter_address: newMeterAddr,
+      }),
+    onSuccess: () => {
+      setNewMeterNo('')
+      setNewSubscriberName('')
+      setNewMeterAddr('')
+      void qc.invalidateQueries({ queryKey: ['tabwater-meters'] })
+    },
+  })
+
   const payMut = useMutation({
     mutationFn: (invoiceId: number) => payTabwaterInvoice(invoiceId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['tabwater-invoices'] }),
@@ -937,6 +1185,74 @@ export function TabwaterPage() {
     <section className="space-y-8">
       <div>
         <h1 className="mb-4 text-2xl font-semibold">Tabwater Management</h1>
+
+        <div className="mb-4 grid gap-4 md:grid-cols-2">
+          <form
+            aria-label="Open Billing Period"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              createPeriodMut.mutate()
+            }}
+          >
+            <input
+              aria-label="Billing Period Name"
+              className="rounded border px-2 py-1"
+              placeholder="Period (e.g. 11/2569)"
+              value={newPeriodName}
+              onChange={(e) => setNewPeriodName(e.target.value)}
+            />
+            <button type="submit" className="rounded bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-800">
+              Open Period
+            </button>
+            {periodsQ.data && periodsQ.data.length > 0 && (
+              <span className="text-xs text-slate-500">
+                Active Periods: {periodsQ.data.map((p) => `#${p.id} (${p.period_name})`).slice(0, 3).join(', ')}
+              </span>
+            )}
+          </form>
+
+          <form
+            aria-label="Register Water Meter"
+            className="flex flex-wrap items-end gap-2 rounded bg-white p-4 shadow-sm border text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              createMeterMut.mutate()
+            }}
+          >
+            <input
+              aria-label="Meter Owner User ID"
+              className="w-20 rounded border px-2 py-1"
+              placeholder="User ID"
+              value={newMeterUserId}
+              onChange={(e) => setNewMeterUserId(e.target.value)}
+            />
+            <input
+              aria-label="New Meter Number"
+              className="w-28 rounded border px-2 py-1"
+              placeholder="Meter No"
+              value={newMeterNo}
+              onChange={(e) => setNewMeterNo(e.target.value)}
+            />
+            <input
+              aria-label="Subscriber Name"
+              className="w-32 rounded border px-2 py-1"
+              placeholder="Subscriber"
+              value={newSubscriberName}
+              onChange={(e) => setNewSubscriberName(e.target.value)}
+            />
+            <input
+              aria-label="Meter Address"
+              className="w-28 rounded border px-2 py-1"
+              placeholder="Address"
+              value={newMeterAddr}
+              onChange={(e) => setNewMeterAddr(e.target.value)}
+            />
+            <button type="submit" className="rounded bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-800">
+              Register Meter
+            </button>
+          </form>
+        </div>
 
         <form
           aria-label="Record Meter Reading"

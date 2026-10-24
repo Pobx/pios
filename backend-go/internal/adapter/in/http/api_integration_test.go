@@ -903,5 +903,87 @@ func TestAPIIntegration_WaveModules_WithRealPostgres(t *testing.T) {
 		if respLine.StatusCode != http.StatusOK {
 			t.Fatalf("POST /webhooks/line status = %d", respLine.StatusCode)
 		}
+
+		// 8. Operational Self-Sufficiency: Master Data Creation (Users & Zones), Recycle Withdrawal & Pricing, Tabwater Period & Meter Registration
+		respNewZone, bodyNewZone := doPOST(t, "/api/v1/zones", adminTok, `{"zone_name":"หมู่ 99 ทดสอบ"}`)
+		if respNewZone.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /zones status = %d: %s", respNewZone.StatusCode, string(bodyNewZone))
+		}
+		var createdZone struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyNewZone, &createdZone)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM zones WHERE id = $1`, createdZone.ID)
+		})
+
+		respNewUser, bodyNewUser := doPOST(t, "/api/v1/users", adminTok, fmt.Sprintf(`{"username":"it_user_999","prefix":"นาย","firstname":"ทดสอบ","lastname":"สร้างใหม่","phone":"0890009999","address":"99/9","zone_id":%d}`, createdZone.ID))
+		if respNewUser.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /users status = %d: %s", respNewUser.StatusCode, string(bodyNewUser))
+		}
+		var createdUser struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyNewUser, &createdUser)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, createdUser.ID)
+		})
+
+		// Set Recycle Item Price
+		var targetRecycleItemID int64
+		_ = pool.QueryRow(context.Background(), `SELECT id FROM kp_tbank_items ORDER BY id LIMIT 1`).Scan(&targetRecycleItemID)
+		respPrice, bodyPrice := doPOST(t, fmt.Sprintf("/api/v1/recycle/items/%d/price", targetRecycleItemID), adminTok, `{"price_from_dealer":12.0,"price_for_member":9.5,"point":10}`)
+		if respPrice.StatusCode != http.StatusOK {
+			t.Fatalf("POST /recycle/items/%d/price status = %d: %s", targetRecycleItemID, respPrice.StatusCode, string(bodyPrice))
+		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM kp_tbank_items_pricepoint WHERE kp_items_idfk = $1 AND price_for_member = 9.5`, targetRecycleItemID)
+		})
+
+		// Withdraw Member Balance
+		var targetBankAccID int64
+		var origBankBal float64
+		_ = pool.QueryRow(context.Background(), `SELECT id, COALESCE(balance, 0)::float8 FROM kp_bank_accounts WHERE org_id = 1 ORDER BY id LIMIT 1`).Scan(&targetBankAccID, &origBankBal)
+		_, _ = pool.Exec(context.Background(), `UPDATE kp_bank_accounts SET balance = $1 WHERE id = $2`, origBankBal+100.0, targetBankAccID)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `UPDATE kp_bank_accounts SET balance = $1 WHERE id = $2`, origBankBal, targetBankAccID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM kp_money_requests WHERE verification_code = 'WD0001'`)
+		})
+
+		respWithdraw, bodyWithdraw := doPOST(t, "/api/v1/recycle/withdrawals", adminTok, fmt.Sprintf(`{"account_id":%d,"amount":50.0,"payout_method":"cash","note":"IT-WD-999"}`, targetBankAccID))
+		if respWithdraw.StatusCode != http.StatusOK {
+			t.Fatalf("POST /recycle/withdrawals status = %d: %s", respWithdraw.StatusCode, string(bodyWithdraw))
+		}
+
+		// List & Create Tabwater Billing Period
+		respPeriods, bodyPeriods := env.doGET(t, "/api/v1/tabwater/periods", adminTok)
+		if respPeriods.StatusCode != http.StatusOK {
+			t.Fatalf("GET /tabwater/periods status = %d: %s", respPeriods.StatusCode, string(bodyPeriods))
+		}
+
+		respNewPeriod, bodyNewPeriod := doPOST(t, "/api/v1/tabwater/periods", adminTok, `{"period_name":"12/2569-IT"}`)
+		if respNewPeriod.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /tabwater/periods status = %d: %s", respNewPeriod.StatusCode, string(bodyNewPeriod))
+		}
+		var createdPeriod struct {
+			ID int64 `json:"id"`
+		}
+		_ = json.Unmarshal(bodyNewPeriod, &createdPeriod)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM invoice_period WHERE id = $1`, createdPeriod.ID)
+		})
+
+		// Register New Water Meter
+		respNewMeter, bodyNewMeter := doPOST(t, "/api/v1/tabwater/meters", adminTok, `{"user_id":1,"meternumber":"IT-MTR-999","submeter_name":"บ้านทดสอบ","meter_address":"99 หมู่ 1","initial_reading":0}`)
+		if respNewMeter.StatusCode != http.StatusCreated {
+			t.Fatalf("POST /tabwater/meters status = %d: %s", respNewMeter.StatusCode, string(bodyNewMeter))
+		}
+		var createdMeter struct {
+			MeterID int64 `json:"meter_id"`
+		}
+		_ = json.Unmarshal(bodyNewMeter, &createdMeter)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM tw_meter_infos WHERE meter_id = $1`, createdMeter.MeterID)
+		})
 	})
 }
