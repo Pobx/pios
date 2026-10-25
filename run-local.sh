@@ -8,6 +8,18 @@ cd "$ROOT_DIR"
 COMPOSE_FILE="deploy/docker-compose.yml"
 CMD="${1:-up}"
 
+ensure_docker_running() {
+  if ! docker info >/dev/null 2>&1; then
+    if command -v colima >/dev/null 2>&1; then
+      echo "==> ตรวจพบว่า Docker daemon ยังไม่ทำงาน กำลังสั่ง colima start..."
+      colima start
+    else
+      echo "ERROR: Docker daemon ยังไม่ทำงาน กรุณาเปิด Docker Desktop หรือ Colima ก่อนรันสคริปต์" >&2
+      exit 1
+    fi
+  fi
+}
+
 print_access_info() {
   echo ""
   echo "=============================================================="
@@ -26,6 +38,7 @@ print_access_info() {
 
 case "$CMD" in
   up|start)
+    ensure_docker_running
     echo "==> [1/3] กำลังสตาร์ท Docker Containers ทั้งหมด..."
     docker compose -f "$COMPOSE_FILE" up -d --build --wait
 
@@ -46,6 +59,7 @@ case "$CMD" in
     ;;
 
   dev)
+    ensure_docker_running
     echo "==> [Dev Mode] สตาร์ทเฉพาะ PostgreSQL และ Keycloak บน Docker..."
     docker compose -f "$COMPOSE_FILE" up -d --wait postgres keycloak
 

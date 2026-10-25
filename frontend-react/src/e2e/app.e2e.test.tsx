@@ -410,5 +410,32 @@ describe('Full-App E2E User Journeys with Mock OIDC & API', () => {
     // Wave 5: Tabwater
     await user.click(within(nav).getByRole('link', { name: /tabwater/i }))
     expect(await screen.findByText('M-HS1-0001')).toBeInTheDocument()
+
+    // AdminLTE Sidebar is visible on module pages and can return to Access Menu
+    const sidebar = screen.getByRole('complementary', { name: /module sidebar/i })
+    expect(within(sidebar).getByText('จัดการใบแจ้งหนี้')).toBeInTheDocument()
+    await user.click(within(sidebar).getByRole('link', { name: /หน้าเมนูหลัก/i }))
+    expect(await screen.findByText('องค์การบริหารส่วนตำบลห้องแซง')).toBeInTheDocument()
+  })
+
+  it('E2E Journey 7 (otp2025 AccessMenu Radial Hub Role Gating): tabwater_staff sees enabled งานประปา bubble and disabled คลังพัสดุ bubble', () => {
+    renderAppE2E({
+      initialPath: '/',
+      accessToken: 'jwt-tw-staff',
+      auth: {
+        isAuthenticated: true,
+        user: { username: 'tw_staff1', roles: ['tabwater_staff'], orgId: 1 },
+      },
+    })
+
+    expect(screen.getByText('HSG1:PIOS')).toBeInTheDocument()
+    expect(screen.getByText('องค์การบริหารส่วนตำบลห้องแซง')).toBeInTheDocument()
+
+    const tabwaterLinks = screen.getAllByRole('link', { name: /งานประปา/i })
+    expect(tabwaterLinks[0]).toHaveAttribute('aria-disabled', 'false')
+
+    const inventoryLinks = screen.getAllByRole('link', { name: /คลังพัสดุ/i })
+    expect(inventoryLinks[0]).toHaveAttribute('aria-disabled', 'true')
+    expect(inventoryLinks[0].className).toContain('a-disbled')
   })
 })

@@ -34,18 +34,18 @@ import {
   type WaterInvoice,
 } from './api'
 
-// ---- Shared UI Primitives for Module Pages ----------------------------------
+// ---- Shared AdminLTE / Soft-UI White Theme Primitives -----------------------
 
 const INPUT_CLS =
-  'rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white'
+  'rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-600 focus:bg-white'
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-blue-600/20 hover:bg-blue-700'
+  'inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-sky-700'
 const BTN_EMERALD =
-  'inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-700'
+  'inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700'
 const BTN_AMBER =
-  'inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-xs shadow-amber-600/20 hover:bg-amber-700'
+  'inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-amber-600'
 const BTN_SECONDARY =
-  'inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50'
+  'inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50'
 
 function StatusBadge({ value }: { value: string }) {
   const v = (value || '').toLowerCase()
@@ -58,7 +58,7 @@ function StatusBadge({ value }: { value: string }) {
           ? 'bg-rose-50 text-rose-700 ring-rose-600/20'
           : 'bg-slate-100 text-slate-700 ring-slate-500/15'
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${tone}`}>
+    <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ring-1 ${tone}`}>
       {value}
     </span>
   )
@@ -76,13 +76,16 @@ function ModuleHeader({
   right?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+    <div className="adminlte-card adminlte-card-primary flex flex-wrap items-center justify-between gap-4 p-5">
       <div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-600/15">
-          {badge}
-        </span>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-sky-700 ring-1 ring-sky-600/15">
+            {badge}
+          </span>
+          <span className="text-xs font-medium text-slate-400">• องค์การบริหารส่วนตำบลห้องแซง (HSG1:PIOS)</span>
+        </div>
+        <h1 className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</h1>
+        <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">{subtitle}</p>
       </div>
       {right && <div className="flex items-center gap-2">{right}</div>}
     </div>
@@ -103,23 +106,30 @@ export function PrintableInvoiceModal({
     <div
       role="dialog"
       aria-label="Printable Water Invoice"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
     >
-      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="mb-5 flex items-start justify-between border-b border-slate-200 pb-4">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-blue-600">
-              OTP Municipal Waterworks
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo/ko_envsogo.png"
+              alt="Logo"
+              className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+            />
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-sky-600">
+                กิจการประปา อบต.ห้องแซง (OTP Waterworks)
+              </div>
+              <h2 className="mt-0.5 text-base font-bold text-slate-900">
+                {isPaid ? 'ใบเสร็จรับเงินค่าน้ำประปา (Official Receipt)' : 'ใบแจ้งหนี้ค่าน้ำประปา (Water Bill)'}
+              </h2>
+              <p className="text-xs text-slate-500">
+                Organization #{invoice.org_id} • Meter #{invoice.meter_id}
+              </p>
             </div>
-            <h2 className="mt-1 text-lg font-bold text-slate-900">
-              {isPaid ? 'ใบเสร็จรับเงินค่าน้ำประปา (Official Receipt)' : 'ใบแจ้งหนี้ค่าน้ำประปา (Water Bill)'}
-            </h2>
-            <p className="text-xs text-slate-500">
-              Organization #{invoice.org_id} • Meter #{invoice.meter_id}
-            </p>
           </div>
           <span
-            className={`rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${
+            className={`rounded-md px-2.5 py-1 text-xs font-bold uppercase ring-1 ${
               isPaid
                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
                 : 'bg-amber-50 text-amber-700 ring-amber-600/20'
@@ -129,21 +139,21 @@ export function PrintableInvoiceModal({
           </span>
         </div>
 
-        <dl className="mb-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
+        <dl className="mb-5 grid grid-cols-2 gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm">
           <div>
-            <dt className="text-xs text-slate-500">Invoice / Receipt No.</dt>
+            <dt className="text-xs text-slate-500">เลขที่ใบแจ้งหนี้ / ใบเสร็จ</dt>
             <dd className="font-mono font-bold text-slate-900">{invoice.inv_no}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Billing Period</dt>
+            <dt className="text-xs text-slate-500">ประจำงวดบิล (Period)</dt>
             <dd className="font-semibold text-slate-900">{invoice.period_name || `Period #${invoice.period_id}`}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Previous Reading</dt>
+            <dt className="text-xs text-slate-500">เลขมิเตอร์ครั้งก่อน</dt>
             <dd className="font-mono">{invoice.lastmeter}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Current Reading</dt>
+            <dt className="text-xs text-slate-500">เลขมิเตอร์ครั้งนี้</dt>
             <dd className="font-mono">{invoice.currentmeter}</dd>
           </div>
         </dl>
@@ -151,24 +161,24 @@ export function PrintableInvoiceModal({
         <table className="mb-6 w-full border-t border-b border-slate-200 text-sm">
           <tbody className="divide-y divide-slate-100">
             <tr>
-              <td className="py-2 text-slate-600">Water Used (m³)</td>
+              <td className="py-2 text-slate-600">หน่วยน้ำที่ใช้ (Water Used m³)</td>
               <td className="py-2 text-right font-semibold">{invoice.water_used} m³</td>
             </tr>
             <tr>
-              <td className="py-2 text-slate-600">Water Usage Charge</td>
+              <td className="py-2 text-slate-600">ค่าน้ำประปา (Water Charge)</td>
               <td className="py-2 text-right font-mono">{invoice.paid.toFixed(2)} THB</td>
             </tr>
             <tr>
-              <td className="py-2 text-slate-600">Meter Maintenance Fee</td>
+              <td className="py-2 text-slate-600">ค่ารักษามาตรวัดน้ำ (Maintenance Fee)</td>
               <td className="py-2 text-right font-mono">{invoice.reserve_meter.toFixed(2)} THB</td>
             </tr>
             <tr>
-              <td className="py-2 text-slate-600">VAT (7%)</td>
+              <td className="py-2 text-slate-600">ภาษีมูลค่าเพิ่ม (VAT 7%)</td>
               <td className="py-2 text-right font-mono">{invoice.vat.toFixed(2)} THB</td>
             </tr>
-            <tr className="bg-slate-50/80 font-bold text-slate-900">
-              <td className="py-3 pl-2">Total Amount</td>
-              <td className="py-3 pr-2 text-right font-mono text-base text-blue-700">
+            <tr className="bg-sky-50/60 font-bold text-slate-900">
+              <td className="py-3 pl-2">รวมเงินทั้งสิ้น (Total Amount)</td>
+              <td className="py-3 pr-2 text-right font-mono text-base text-sky-700">
                 {invoice.totalpaid.toFixed(2)} THB
               </td>
             </tr>
@@ -192,61 +202,80 @@ export function PrintableInvoiceModal({
 
 export function ResidentPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<WaterInvoice | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ['resident-overview'],
     queryFn: fetchResidentOverview,
   })
 
+  const filteredInvoices = (data?.invoices ?? []).filter(
+    (inv) =>
+      inv.inv_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inv.period_name || '').toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Self-Service Portal"
-        title="Resident Portal"
-        subtitle="ระบบตรวจสอบมิเตอร์น้ำประปา ใบแจ้งหนี้/ใบเสร็จรับเงิน และสมุดบัญชีธนาคารขยะของลูกบ้าน"
+        badge="พอร์ทัลลูกบ้าน • Self-Service"
+        title="Resident Portal (บริการประชาชนและสมุดคู่ฝาก)"
+        subtitle="ตรวจสอบข้อมูลมิเตอร์น้ำประปา ใบแจ้งหนี้/ใบเสร็จรับเงิน และสมุดบัญชีเงินฝากธนาคารขยะรีไซเคิล"
       />
       {isPending && <Spinner />}
       {error && <ErrorMessage error={error} onRetry={() => void refetch()} />}
       {data && (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Resident Account</div>
+            <div className="adminlte-card adminlte-card-primary p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">บัญชีผู้ใช้งานครัวเรือน</div>
               <div className="mt-1 text-xl font-bold text-slate-900">{data.username}</div>
-              <div className="mt-1 text-xs text-slate-500">บัญชีผู้ใช้งานครัวเรือน</div>
+              <div className="mt-1 text-xs text-slate-500">สมาชิกองค์การบริหารส่วนตำบลห้องแซง</div>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-sky-600">Water Meters</div>
+            <div className="adminlte-card adminlte-card-info p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-sky-600">มิเตอร์น้ำประปาในชื่อของคุณ</div>
               <div className="mt-1 text-3xl font-extrabold text-slate-900">{data.water_meters.length}</div>
-              <div className="mt-1 text-xs text-slate-500">มิเตอร์น้ำประปาที่ลงทะเบียน</div>
+              <div className="mt-1 text-xs text-slate-500">จุดติดตั้งมาตรวัดน้ำประปา</div>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                Recycle Bank Accounts
+            <div className="adminlte-card adminlte-card-success p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-600">
+                สมุดบัญชีธนาคารขยะรีไซเคิล
               </div>
               <div className="mt-1 text-3xl font-extrabold text-slate-900">{data.bank_accounts.length}</div>
-              <div className="mt-1 text-xs text-slate-500">สมุดบัญชีธนาคารขยะรีไซเคิล</div>
+              <div className="mt-1 text-xs text-slate-500">บัญชีออมทรัพย์ขยะรีไซเคิล</div>
             </div>
           </div>
 
           {data.invoices.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-              <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="text-base font-bold text-slate-900">ประวัติใบแจ้งหนี้และใบเสร็จค่าน้ำประปา</h2>
+            <div className="adminlte-card overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    ประวัติใบแจ้งหนี้และใบเสร็จค่าน้ำประปา ({filteredInvoices.length})
+                  </h2>
+                  <p className="text-xs text-slate-500">สามารถกดปุ่ม Print / Receipt เพื่อพิมพ์ใบแจ้งหนี้หรือใบเสร็จรับเงิน</p>
+                </div>
+                <input
+                  type="search"
+                  placeholder="ค้นหาเลขที่บิล / รอบบิล..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-56 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+                />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-5 py-3.5">Invoice No</th>
-                      <th className="px-5 py-3.5">Period</th>
-                      <th className="px-5 py-3.5">Units Used</th>
-                      <th className="px-5 py-3.5">Total (THB)</th>
-                      <th className="px-5 py-3.5">Status</th>
-                      <th className="px-5 py-3.5">Receipt</th>
+                      <th className="px-5 py-3.5">เลขที่บิล (Invoice No)</th>
+                      <th className="px-5 py-3.5">รอบบิล (Period)</th>
+                      <th className="px-5 py-3.5">หน่วยน้ำที่ใช้ (m³)</th>
+                      <th className="px-5 py-3.5">ยอดรวม (THB)</th>
+                      <th className="px-5 py-3.5">สถานะ</th>
+                      <th className="px-5 py-3.5">พิมพ์เอกสาร</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.invoices.map((inv) => (
+                    {filteredInvoices.map((inv) => (
                       <tr key={inv.id} className="transition-colors hover:bg-slate-50/80">
                         <td className="px-5 py-3.5 font-mono font-semibold text-slate-900">{inv.inv_no}</td>
                         <td className="px-5 py-3.5 text-slate-700">{inv.period_name || '—'}</td>
@@ -297,6 +326,7 @@ export function UsersPage() {
   const [newLastname, setNewLastname] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [newZoneName, setNewZoneName] = useState('')
+  const [userSearch, setUserSearch] = useState('')
 
   const linkMut = useMutation({
     mutationFn: () =>
@@ -339,18 +369,25 @@ export function UsersPage() {
     },
   })
 
+  const filteredUsers = (usersQ.data ?? []).filter(
+    (u) =>
+      u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+      `${u.prefix}${u.firstname} ${u.lastname}`.toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.phone || '').includes(userSearch),
+  )
+
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Wave 1.5 • Master Data & LINE OA"
-        title="Users & Zones"
+        badge="ผู้ดูแลระบบ • ตั้งค่าผู้ใช้งานและพื้นที่"
+        title="Users & Zones (ทะเบียนสมาชิก หมู่บ้าน และ LINE OA)"
         subtitle="จัดการทะเบียนลูกบ้าน หมู่บ้าน/เขตพื้นที่บริการ และการผูกบัญชี LINE Official Account แบบยืนยันตัวตน"
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <form
           aria-label="Create User"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-success flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createUserMut.mutate()
@@ -397,7 +434,7 @@ export function UsersPage() {
 
         <form
           aria-label="Create Zone"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-info flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createZoneMut.mutate()
@@ -421,7 +458,7 @@ export function UsersPage() {
 
         <form
           aria-label="Link LINE Account"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-primary flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             linkMut.mutate()
@@ -472,9 +509,16 @@ export function UsersPage() {
       {usersQ.isPending && <Spinner />}
       {usersQ.error && <ErrorMessage error={usersQ.error} onRetry={() => void usersQ.refetch()} />}
       {usersQ.data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">รายชื่อผู้ใช้งาน ({usersQ.data.length})</h2>
+        <div className="adminlte-card overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <h2 className="text-base font-bold text-slate-900">รายชื่อผู้ใช้งาน ({filteredUsers.length})</h2>
+            <input
+              type="search"
+              placeholder="ค้นหาชื่อ / Username / เบอร์โทร..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="w-60 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -482,14 +526,14 @@ export function UsersPage() {
                 <tr>
                   <th className="px-5 py-3.5">ID</th>
                   <th className="px-5 py-3.5">Username</th>
-                  <th className="px-5 py-3.5">Name</th>
-                  <th className="px-5 py-3.5">Phone</th>
+                  <th className="px-5 py-3.5">ชื่อ-นามสกุล (Name)</th>
+                  <th className="px-5 py-3.5">เบอร์โทรศัพท์</th>
                   <th className="px-5 py-3.5">LINE Status</th>
-                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {usersQ.data.map((u) => (
+                {filteredUsers.map((u) => (
                   <tr key={u.id} className="transition-colors hover:bg-slate-50/80">
                     <td className="px-5 py-3.5 font-mono text-xs text-slate-500">{u.id}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-900">{u.username}</td>
@@ -511,13 +555,10 @@ export function UsersPage() {
 
       {zonesQ.data && zonesQ.data.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-bold text-slate-900">Zones ({zonesQ.data.length})</h2>
+          <h2 className="text-base font-bold text-slate-900">เขตพื้นที่ / หมู่บ้าน ({zonesQ.data.length})</h2>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {zonesQ.data.map((z) => (
-              <div
-                key={z.id}
-                className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs"
-              >
+              <div key={z.id} className="adminlte-card flex items-center justify-between p-4">
                 <div>
                   <div className="font-semibold text-slate-900">{z.zone_name}</div>
                   <div className="text-xs text-slate-500">Subzones: {z.subzones.length}</div>
@@ -543,6 +584,7 @@ export function InventoryPage() {
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('ชิ้น')
   const [minStock, setMinStock] = useState('5')
+  const [itemSearch, setItemSearch] = useState('')
 
   const createItemMut = useMutation({
     mutationFn: () =>
@@ -586,18 +628,24 @@ export function InventoryPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['inventory-txs'] }),
   })
 
+  const filteredItems = (itemsQ.data ?? []).filter(
+    (it) =>
+      it.code.toLowerCase().includes(itemSearch.toLowerCase()) ||
+      it.name.toLowerCase().includes(itemSearch.toLowerCase()),
+  )
+
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Wave 2 • Stock & Approval Workflow"
-        title="Inventory Management"
+        badge="คลังพัสดุ • Stock & Approval Workflow"
+        title="Inventory Management (ระบบบริหารคลังพัสดุและเบิกจ่าย)"
         subtitle="ระบบบริหารคลังพัสดุ เคมีภัณฑ์ประปา และการขอเบิกจ่ายพร้อมขั้นตอนอนุมัติ"
       />
 
       <div className="grid gap-4 md:grid-cols-2">
         <form
           aria-label="Add Inventory Item"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-primary flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createItemMut.mutate()
@@ -644,7 +692,7 @@ export function InventoryPage() {
 
         <form
           aria-label="Create Stock Request"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-warning flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createTxMut.mutate()
@@ -693,25 +741,32 @@ export function InventoryPage() {
       {itemsQ.isPending && <Spinner />}
       {itemsQ.error && <ErrorMessage error={itemsQ.error} onRetry={() => void itemsQ.refetch()} />}
       {itemsQ.data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">ทะเบียนรายการพัสดุ ({itemsQ.data.length})</h2>
+        <div className="adminlte-card overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <h2 className="text-base font-bold text-slate-900">ทะเบียนรายการพัสดุ ({filteredItems.length})</h2>
+            <input
+              type="search"
+              placeholder="ค้นหารหัส / ชื่อพัสดุ..."
+              value={itemSearch}
+              onChange={(e) => setItemSearch(e.target.value)}
+              className="w-56 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Code</th>
-                  <th className="px-5 py-3.5">Name</th>
-                  <th className="px-5 py-3.5">Category</th>
-                  <th className="px-5 py-3.5">Unit</th>
-                  <th className="px-5 py-3.5">Min Stock</th>
+                  <th className="px-5 py-3.5">รหัสพัสดุ (Code)</th>
+                  <th className="px-5 py-3.5">รายการพัสดุ (Name)</th>
+                  <th className="px-5 py-3.5">หมวดหมู่</th>
+                  <th className="px-5 py-3.5">หน่วยนับ</th>
+                  <th className="px-5 py-3.5">จำนวนขั้นต่ำ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {itemsQ.data.map((item) => (
+                {filteredItems.map((item) => (
                   <tr key={item.id} className="transition-colors hover:bg-slate-50/80">
-                    <td className="px-5 py-3.5 font-mono font-semibold text-blue-700">{item.code}</td>
+                    <td className="px-5 py-3.5 font-mono font-semibold text-sky-700">{item.code}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-900">{item.name}</td>
                     <td className="px-5 py-3.5 text-slate-600">{item.category_name}</td>
                     <td className="px-5 py-3.5 text-slate-600">{item.unit}</td>
@@ -725,20 +780,20 @@ export function InventoryPage() {
       )}
 
       {txsQ.data && txsQ.data.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="adminlte-card overflow-hidden">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">Recent Approval Transactions</h2>
+            <h2 className="text-base font-bold text-slate-900">รายการคำขอเบิกและอนุมัติพัสดุ (Approval Transactions)</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Ref No</th>
-                  <th className="px-5 py-3.5">Item</th>
-                  <th className="px-5 py-3.5">Qty</th>
-                  <th className="px-5 py-3.5">Purpose</th>
-                  <th className="px-5 py-3.5">Status</th>
-                  <th className="px-5 py-3.5">Action</th>
+                  <th className="px-5 py-3.5">เลขที่อ้างอิง</th>
+                  <th className="px-5 py-3.5">รายการพัสดุ</th>
+                  <th className="px-5 py-3.5">จำนวน</th>
+                  <th className="px-5 py-3.5">วัตถุประสงค์</th>
+                  <th className="px-5 py-3.5">สถานะ</th>
+                  <th className="px-5 py-3.5">การอนุมัติ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -817,15 +872,15 @@ export function FoodWastePage() {
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Wave 3 • Organic Compost & TGO Carbon Credit"
-        title="FoodWaste & Carbon Credit"
+        badge="ถังขยะเปียกครัวเรือน • TGO Carbon Credit"
+        title="FoodWaste & Carbon Credit (ถังขยะเปียกและคาร์บอนเครดิต)"
         subtitle="บริหารจัดการถังหมักรักษ์โลก บันทึกปริมาณขยะอินทรีย์ และคำนวณการลดก๊าซเรือนกระจก (kgCO2e)"
       />
 
       <div className="grid gap-4 md:grid-cols-2">
         <form
           aria-label="Open Compost Batch"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-success flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createBatchMut.mutate()
@@ -833,7 +888,7 @@ export function FoodWastePage() {
         >
           <div>
             <h2 className="text-sm font-bold text-slate-900">เปิดรอบถังหมักใหม่ (Open Compost Batch)</h2>
-            <p className="mb-3 text-xs text-slate-500">กำหนดรหัสรอบการหมักขยะอินทรีย์</p>
+            <p className="mb-3 text-xs text-slate-500">กำหนดรหัสรอบการหมักขยะอินทรีย์ประจำครัวเรือน</p>
             <input
               aria-label="Batch Code"
               className={`w-full ${INPUT_CLS}`}
@@ -849,7 +904,7 @@ export function FoodWastePage() {
 
         <form
           aria-label="Record Waste Log"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-primary flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createLogMut.mutate()
@@ -889,39 +944,41 @@ export function FoodWastePage() {
       {data && (
         <>
           <div className="grid gap-4 sm:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Compost Batches</div>
+            <div className="adminlte-card adminlte-card-info p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">รอบถังหมักทั้งหมด</div>
               <div className="mt-1 text-3xl font-extrabold text-slate-900">{data.total_batches}</div>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Waste Logs</div>
+            <div className="adminlte-card adminlte-card-primary p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">จำนวนครั้งที่บันทึก</div>
               <div className="mt-1 text-3xl font-extrabold text-slate-900">{data.total_waste_logs}</div>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-              <div className="text-xs font-semibold uppercase tracking-wider text-blue-600">Total Weight (kg)</div>
+            <div className="adminlte-card adminlte-card-warning p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-amber-600">น้ำหนักขยะเปียกรวม (kg)</div>
               <div className="mt-1 font-mono text-3xl font-extrabold text-slate-900">
                 {data.total_weight_kg.toFixed(2)}
               </div>
             </div>
-            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-5 shadow-xs">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Carbon Saved (kgCO2e)</div>
+            <div className="adminlte-card adminlte-card-success bg-emerald-50/40 p-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                คาร์บอนเครดิตสะสม (kgCO2e)
+              </div>
               <div className="mt-1 font-mono text-3xl font-extrabold text-emerald-700">
                 {data.total_carbon_saved_kg.toFixed(2)}
               </div>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+          <div className="adminlte-card overflow-hidden">
             <div className="border-b border-slate-100 px-5 py-4">
-              <h2 className="text-base font-bold text-slate-900">รายการรอบถังหมัก (Compost Batches)</h2>
+              <h2 className="text-base font-bold text-slate-900">รายการรอบถังหมักรักษ์โลก (Compost Batches)</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-5 py-3.5">Batch Code</th>
-                    <th className="px-5 py-3.5">Start Date</th>
-                    <th className="px-5 py-3.5">Status</th>
+                    <th className="px-5 py-3.5">รหัสรอบถังหมัก (Batch Code)</th>
+                    <th className="px-5 py-3.5">วันที่เริ่มต้น (Start Date)</th>
+                    <th className="px-5 py-3.5">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -975,6 +1032,7 @@ export function RecycleBankPage() {
   const [memberPrice, setMemberPrice] = useState('')
   const [dealerPrice, setDealerPrice] = useState('')
   const [itemPoint, setItemPoint] = useState('10')
+  const [recycleSearch, setRecycleSearch] = useState('')
 
   const purchaseMut = useMutation({
     mutationFn: () =>
@@ -1022,12 +1080,19 @@ export function RecycleBankPage() {
     },
   })
 
+  const filteredItems = (data ?? []).filter(
+    (item) =>
+      item.code.toLowerCase().includes(recycleSearch.toLowerCase()) ||
+      item.name.toLowerCase().includes(recycleSearch.toLowerCase()) ||
+      item.group_name.toLowerCase().includes(recycleSearch.toLowerCase()),
+  )
+
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Wave 4 • KeptKaya Recycle Bank & IoT Kiosks"
+        badge="ธนาคารขยะรีไซเคิล • KeptKaya & IoT Kiosks"
         title="Recycle Bank (KeptKaya)"
-        subtitle="ระบบรับซื้อขยะรีไซเคิล สมุดบัญชีเงินฝาก/แต้มสะสม การเบิกถอนเงิน ตู้ Kiosk อัจฉริยะ และกองทุนสวัสดิการชุมชน"
+        subtitle="ระบบรับซื้อขยะรีไซเคิล สมุดบัญชีเงินฝาก/แต้มสะสม การเบิกถอนเงิน ตู้คืนขวดอัตโนมัติ และกองทุนสวัสดิการชุมชน"
         right={
           data &&
           data.length > 0 && (
@@ -1051,7 +1116,7 @@ export function RecycleBankPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <form
           aria-label="Record Recycle Purchase"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-primary flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             purchaseMut.mutate()
@@ -1105,7 +1170,7 @@ export function RecycleBankPage() {
 
         <form
           aria-label="Withdraw Member Balance"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-warning flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             withdrawMut.mutate()
@@ -1145,7 +1210,7 @@ export function RecycleBankPage() {
 
         <form
           aria-label="Update Item Price"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-success flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             priceMut.mutate()
@@ -1194,23 +1259,32 @@ export function RecycleBankPage() {
       {isPending && <Spinner />}
       {error && <ErrorMessage error={error} onRetry={() => void refetch()} />}
       {data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">รายการขยะรีไซเคิลและราคารับซื้อ ({data.length})</h2>
+        <div className="adminlte-card overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <h2 className="text-base font-bold text-slate-900">
+              รายการขยะรีไซเคิลและราคารับซื้อ ({filteredItems.length})
+            </h2>
+            <input
+              type="search"
+              placeholder="ค้นหารหัส / ชื่อขยะรีไซเคิล..."
+              value={recycleSearch}
+              onChange={(e) => setRecycleSearch(e.target.value)}
+              className="w-56 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Code</th>
-                  <th className="px-5 py-3.5">Item Name</th>
-                  <th className="px-5 py-3.5">Group</th>
-                  <th className="px-5 py-3.5">Member Price</th>
-                  <th className="px-5 py-3.5">Points</th>
+                  <th className="px-5 py-3.5">รหัส (Code)</th>
+                  <th className="px-5 py-3.5">ประเภทขยะรีไซเคิล (Item Name)</th>
+                  <th className="px-5 py-3.5">หมวดหมู่ (Group)</th>
+                  <th className="px-5 py-3.5">ราคารับซื้อสมาชิก (THB)</th>
+                  <th className="px-5 py-3.5">แต้มสะสม (Points)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.map((item) => (
+                {filteredItems.map((item) => (
                   <tr key={item.id} className="transition-colors hover:bg-slate-50/80">
                     <td className="px-5 py-3.5 font-mono font-semibold text-emerald-700">{item.code}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-900">{item.name}</td>
@@ -1218,7 +1292,7 @@ export function RecycleBankPage() {
                     <td className="px-5 py-3.5 font-mono font-semibold text-slate-900">
                       {item.price_for_member.toFixed(2)}
                     </td>
-                    <td className="px-5 py-3.5 font-mono text-blue-700">{item.point}</td>
+                    <td className="px-5 py-3.5 font-mono text-sky-700">{item.point}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1228,19 +1302,21 @@ export function RecycleBankPage() {
       )}
 
       {accountsQ.data && accountsQ.data.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="adminlte-card overflow-hidden">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">Member Bank Accounts ({accountsQ.data.length})</h2>
+            <h2 className="text-base font-bold text-slate-900">
+              สมุดบัญชีเงินฝากธนาคารขยะรีไซเคิล ({accountsQ.data.length})
+            </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Account No</th>
-                  <th className="px-5 py-3.5">User ID</th>
-                  <th className="px-5 py-3.5">Balance (THB)</th>
-                  <th className="px-5 py-3.5">Points</th>
-                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">เลขที่บัญชี (Account No)</th>
+                  <th className="px-5 py-3.5">รหัสสมาชิก (User ID)</th>
+                  <th className="px-5 py-3.5">ยอดเงินคงเหลือ (THB)</th>
+                  <th className="px-5 py-3.5">แต้มสะสม (Points)</th>
+                  <th className="px-5 py-3.5">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1263,9 +1339,9 @@ export function RecycleBankPage() {
 
       {submodulesQ.data && (
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+          <div className="adminlte-card adminlte-card-info p-6">
             <h2 className="mb-3 text-base font-bold text-slate-900">
-              IoT Smart Kiosks ({submodulesQ.data.kiosks.length})
+              ตู้คืนขวดอัตโนมัติ • IoT Smart Kiosks ({submodulesQ.data.kiosks.length})
             </h2>
             {submodulesQ.data.kiosks.length === 0 ? (
               <p className="text-xs text-slate-500">No kiosks registered</p>
@@ -1283,13 +1359,13 @@ export function RecycleBankPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
+          <div className="adminlte-card adminlte-card-success p-6">
             <h2 className="mb-3 text-base font-bold text-slate-900">
-              Community Welfare & Annual Trash ({submodulesQ.data.welfare_configs.length} rules /{' '}
+              กองทุนฌาปนกิจ & ค่าถังขยะรายปี ({submodulesQ.data.welfare_configs.length} rules /{' '}
               {submodulesQ.data.annual_trash_subscriptions.length} bins)
             </h2>
             {submodulesQ.data.welfare_configs.map((wc) => (
-              <div key={wc.id} className="rounded-xl bg-slate-50 p-3.5 text-sm text-slate-700">
+              <div key={wc.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 text-sm text-slate-700">
                 <div className="font-semibold text-slate-900">
                   Default Payout: {wc.default_payout_amount.toFixed(2)} THB
                 </div>
@@ -1305,11 +1381,14 @@ export function RecycleBankPage() {
   )
 }
 
-// ---- Wave 5: Tabwater Page (Meter Reading Form + Meters & Invoices + Pay) ---
+// ---- Wave 5: Tabwater Page (Matches otp2025/resources/views/dashboard.blade.php) ---
 
 export function TabwaterPage() {
   const qc = useQueryClient()
   const [selectedInvoice, setSelectedInvoice] = useState<WaterInvoice | null>(null)
+  const [meterSearch, setMeterSearch] = useState('')
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+
   const metersQ = useQuery({
     queryKey: ['tabwater-meters'],
     queryFn: () => fetchTabwaterMeters({ limit: 50, offset: 0 }),
@@ -1378,18 +1457,92 @@ export function TabwaterPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['tabwater-invoices'] }),
   })
 
+  const totalMeters = metersQ.data?.length ?? 0
+  const totalWaterUsed = (invoicesQ.data ?? []).reduce((acc, i) => acc + i.water_used, 0)
+  const totalPaidAmount = (invoicesQ.data ?? [])
+    .filter((i) => i.status === 'paid')
+    .reduce((acc, i) => acc + i.totalpaid, 0)
+  const unpaidCount = (invoicesQ.data ?? []).filter((i) => i.status !== 'paid').length
+
+  const filteredMeters = (metersQ.data ?? []).filter(
+    (m) =>
+      m.meternumber.toLowerCase().includes(meterSearch.toLowerCase()) ||
+      m.submeter_name.toLowerCase().includes(meterSearch.toLowerCase()) ||
+      m.meter_address.toLowerCase().includes(meterSearch.toLowerCase()),
+  )
+
+  const filteredInvoices = (invoicesQ.data ?? []).filter(
+    (inv) =>
+      inv.inv_no.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+      (inv.period_name || '').toLowerCase().includes(invoiceSearch.toLowerCase()),
+  )
+
   return (
     <section className="space-y-6">
       <ModuleHeader
-        badge="Wave 5 • Municipal Waterworks & Progressive Billing"
-        title="Tabwater Management"
+        badge="งานประปา • Municipal Waterworks"
+        title="Tabwater Management (ระบบบริหารกิจการประปาหมู่บ้าน)"
         subtitle="ระบบบริหารกิจการประปาหมู่บ้าน เปิดรอบบิลประจำเดือน ขึ้นทะเบียนมิเตอร์ จดเลขมิเตอร์ และรับชำระค่าน้ำประปา"
       />
 
+      {/* ====================================================================
+          Summary Card & KPI Row (matches otp2025/resources/views/dashboard.blade.php)
+         ==================================================================== */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        <div className="adminlte-card relative overflow-hidden bg-gradient-to-br from-white via-sky-50/50 to-blue-50/40 p-5 lg:col-span-5">
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <div className="space-y-2">
+              <span className="inline-flex rounded-md bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-800">
+                ปีงบประมาณ 2569
+              </span>
+              <h2 className="text-lg font-bold text-slate-900">สรุปข้อมูลผู้ใช้น้ำประปา อบต.ห้องแซง</h2>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2">
+                  <div className="text-[11px] font-medium text-slate-500">จำนวนผู้ใช้น้ำ (มิเตอร์)</div>
+                  <div className="text-xl font-extrabold text-sky-700">{totalMeters} ราย</div>
+                </div>
+                <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2">
+                  <div className="text-[11px] font-medium text-slate-500">รอบบิลที่เปิดใช้งาน</div>
+                  <div className="text-xl font-extrabold text-emerald-700">{periodsQ.data?.length ?? 1} งวด</div>
+                </div>
+              </div>
+            </div>
+            <img
+              src="/soft-ui/assets/img/water.png"
+              alt="Waterworks Illustration"
+              className="hidden h-24 w-24 shrink-0 object-contain sm:block"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-7">
+          <div className="adminlte-card adminlte-card-info p-4">
+            <div className="text-xs font-bold text-slate-500">ปริมาณการใช้น้ำรวม</div>
+            <div className="mt-1.5 font-mono text-2xl font-extrabold text-slate-900">{totalWaterUsed} m³</div>
+            <div className="mt-1 text-[11px] text-sky-600">คำนวณตามอัตราก้าวหน้า</div>
+          </div>
+          <div className="adminlte-card adminlte-card-success p-4">
+            <div className="text-xs font-bold text-slate-500">รับชำระค่าน้ำแล้ว (Paid)</div>
+            <div className="mt-1.5 font-mono text-2xl font-extrabold text-emerald-700">
+              {totalPaidAmount.toFixed(2)} ฿
+            </div>
+            <div className="mt-1 text-[11px] text-emerald-600">พร้อมออกใบเสร็จรับเงิน</div>
+          </div>
+          <div className="adminlte-card adminlte-card-warning col-span-2 p-4 sm:col-span-1">
+            <div className="text-xs font-bold text-slate-500">ใบแจ้งหนี้รอชำระ</div>
+            <div className="mt-1.5 font-mono text-2xl font-extrabold text-amber-600">{unpaidCount} บิล</div>
+            <div className="mt-1 text-[11px] text-slate-500">สถานะรอรับชำระเงิน</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ====================================================================
+          3 Action Forms (Open Period, Register Meter, Record Reading)
+         ==================================================================== */}
       <div className="grid gap-4 lg:grid-cols-3">
         <form
           aria-label="Open Billing Period"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-info flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createPeriodMut.mutate()
@@ -1418,7 +1571,7 @@ export function TabwaterPage() {
 
         <form
           aria-label="Register Water Meter"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-success flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             createMeterMut.mutate()
@@ -1465,7 +1618,7 @@ export function TabwaterPage() {
 
         <form
           aria-label="Record Meter Reading"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+          className="adminlte-card adminlte-card-primary flex flex-col justify-between gap-3 p-5"
           onSubmit={(e) => {
             e.preventDefault()
             readingMut.mutate()
@@ -1514,25 +1667,32 @@ export function TabwaterPage() {
       {metersQ.isPending && <Spinner />}
       {metersQ.error && <ErrorMessage error={metersQ.error} onRetry={() => void metersQ.refetch()} />}
       {metersQ.data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">ทะเบียนมิเตอร์น้ำประปา ({metersQ.data.length})</h2>
+        <div className="adminlte-card overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <h2 className="text-base font-bold text-slate-900">ทะเบียนมิเตอร์น้ำประปา ({filteredMeters.length})</h2>
+            <input
+              type="search"
+              placeholder="ค้นหาเลขมิเตอร์ / ชื่อผู้ใช้น้ำ..."
+              value={meterSearch}
+              onChange={(e) => setMeterSearch(e.target.value)}
+              className="w-56 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Meter No</th>
-                  <th className="px-5 py-3.5">Subscriber</th>
-                  <th className="px-5 py-3.5">Address</th>
-                  <th className="px-5 py-3.5">Last Reading</th>
-                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">เลขมิเตอร์ (Meter No)</th>
+                  <th className="px-5 py-3.5">ชื่อผู้ใช้น้ำ (Subscriber)</th>
+                  <th className="px-5 py-3.5">ที่อยู่ติดตั้ง (Address)</th>
+                  <th className="px-5 py-3.5">เลขมิเตอร์ล่าสุด</th>
+                  <th className="px-5 py-3.5">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {metersQ.data.map((m) => (
+                {filteredMeters.map((m) => (
                   <tr key={m.meter_id} className="transition-colors hover:bg-slate-50/80">
-                    <td className="px-5 py-3.5 font-mono font-semibold text-blue-700">{m.meternumber}</td>
+                    <td className="px-5 py-3.5 font-mono font-semibold text-sky-700">{m.meternumber}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-900">{m.submeter_name}</td>
                     <td className="px-5 py-3.5 text-slate-600">{m.meter_address}</td>
                     <td className="px-5 py-3.5 font-mono font-semibold">{m.last_meter_recording}</td>
@@ -1548,37 +1708,46 @@ export function TabwaterPage() {
       )}
 
       {invoicesQ.data && invoicesQ.data.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="adminlte-card overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">Water Invoices</h2>
-            <button
-              type="button"
-              onClick={() =>
-                exportRowsToCsv(
-                  'tabwater-invoices.csv',
-                  ['inv_no', 'period', 'water_used', 'totalpaid', 'status'],
-                  invoicesQ.data.map((i) => [i.inv_no, i.period_name, i.water_used, i.totalpaid, i.status]),
-                )
-              }
-              className={BTN_SECONDARY}
-            >
-              Export Invoices CSV
-            </button>
+            <h2 className="text-base font-bold text-slate-900">รายการใบแจ้งหนี้และใบเสร็จรับเงิน (Water Invoices)</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                placeholder="ค้นหาเลขที่บิล / รอบบิล..."
+                value={invoiceSearch}
+                onChange={(e) => setInvoiceSearch(e.target.value)}
+                className="w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  exportRowsToCsv(
+                    'tabwater-invoices.csv',
+                    ['inv_no', 'period', 'water_used', 'totalpaid', 'status'],
+                    invoicesQ.data.map((i) => [i.inv_no, i.period_name, i.water_used, i.totalpaid, i.status]),
+                  )
+                }
+                className={BTN_SECONDARY}
+              >
+                Export Invoices CSV
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3.5">Invoice No</th>
-                  <th className="px-5 py-3.5">Period</th>
-                  <th className="px-5 py-3.5">Units Used</th>
-                  <th className="px-5 py-3.5">Total (THB)</th>
-                  <th className="px-5 py-3.5">Status</th>
-                  <th className="px-5 py-3.5">Action</th>
+                  <th className="px-5 py-3.5">เลขที่บิล (Invoice No)</th>
+                  <th className="px-5 py-3.5">งวดบิล (Period)</th>
+                  <th className="px-5 py-3.5">หน่วยน้ำ (m³)</th>
+                  <th className="px-5 py-3.5">รวมทั้งสิ้น (THB)</th>
+                  <th className="px-5 py-3.5">สถานะ</th>
+                  <th className="px-5 py-3.5">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {invoicesQ.data.map((inv) => (
+                {filteredInvoices.map((inv) => (
                   <tr key={inv.id} className="transition-colors hover:bg-slate-50/80">
                     <td className="px-5 py-3.5 font-mono font-semibold text-slate-900">{inv.inv_no}</td>
                     <td className="px-5 py-3.5 text-slate-600">{inv.period_name}</td>
@@ -1590,7 +1759,7 @@ export function TabwaterPage() {
                     <td className="flex items-center gap-2 px-5 py-3.5">
                       {inv.status !== 'paid' && (
                         <button
-                          className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700"
+                          className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-sky-700"
                           onClick={() => payMut.mutate(inv.id)}
                         >
                           Pay Invoice
@@ -1612,6 +1781,7 @@ export function TabwaterPage() {
           </div>
         </div>
       )}
+
       {selectedInvoice && <PrintableInvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </section>
   )
