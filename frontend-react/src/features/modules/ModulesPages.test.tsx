@@ -2,54 +2,124 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  ResidentPage,
-  UsersPage,
-  InventoryPage,
-  FoodWastePage,
-  RecycleBankPage,
-  TabwaterPage,
-} from './ModulesPages'
-import * as modApi from './api'
+import { ResidentPage } from '@/features/resident'
+import { UsersPage } from '@/features/users'
+import { InventoryPage } from '@/features/inventory'
+import { FoodWastePage } from '@/features/foodwaste'
+import { RecycleBankPage } from '@/features/recycle-bank'
+import { TabwaterPage } from '@/features/tabwater'
 
-vi.mock('./api', async (importOriginal) => {
-  const actual = await importOriginal<typeof modApi>()
-  return {
-    ...actual,
-    fetchUsers: vi.fn(),
-    createUser: vi.fn().mockResolvedValue({ id: 999, org_id: 1, username: 'user99', prefix: 'คุณ', firstname: 'ทดสอบ', lastname: '', email: '', phone: '', address: '', zone_id: 1, subzone_id: 1, line_user_id: '', status: 'active' }),
-    fetchZones: vi.fn(),
-    createZone: vi.fn().mockResolvedValue({ id: 99, org_id: 1, zone_name: 'หมู่ 99', status: 'active', subzones: [] }),
-    linkUserLineAccount: vi.fn(),
-    fetchResidentOverview: vi.fn(),
-    fetchInventoryItems: vi.fn(),
-    createInventoryItem: vi.fn(),
-    fetchInventoryTransactions: vi.fn(),
-    createInventoryTransaction: vi.fn(),
-    decideInventoryTransaction: vi.fn(),
-    fetchFoodWasteSummary: vi.fn(),
-    createCompostBatch: vi.fn(),
-    createWasteLog: vi.fn(),
-    fetchRecycleItems: vi.fn(),
-    setRecycleItemPrice: vi.fn().mockResolvedValue({ id: 1, org_id: 1, code: 'KP-PET-01', name: 'PET', group_id: 1, group_name: 'พลาสติก', status: 'active', price_from_dealer: 12, price_for_member: 9.5, point: 10 }),
-    fetchRecycleAccounts: vi.fn().mockResolvedValue([]),
-    withdrawRecycleBalance: vi.fn().mockResolvedValue({ id: 1, org_id: 1, user_id: 1, entity_type: 'person', account_no: 'ACC-01', balance: 150, points: 100, status: 'active' }),
-    fetchRecycleSubmodules: vi.fn().mockResolvedValue({
-      kiosks: [{ id: 1, org_id: 1, name: 'Kiosk-HSG1', lat: 15.8, lng: 104.1, status: 'active', total_waste_count: 42 }],
-      welfare_configs: [{ id: 1, org_id: 1, min_months_active: 6, min_total_weight: 50, default_payout_amount: 5000, criteria_description: '' }],
-      welfare_payouts: [],
-      annual_trash_subscriptions: [],
-    }),
-    recordRecyclePurchase: vi.fn(),
-    fetchTabwaterMeters: vi.fn(),
-    createTabwaterMeter: vi.fn().mockResolvedValue({ meter_id: 99, org_id: 1, user_id: 1, meternumber: 'TW-99', submeter_name: 'ทดสอบ', meter_address: '99 หมู่ 1', undertake_zone_id: 1, undertake_subzone_id: 1, status: 'active', owe_count: 0, cutmeter: '0', last_meter_recording: 0 }),
-    fetchTabwaterPeriods: vi.fn().mockResolvedValue([{ id: 12, org_id: 1, period_name: '10/2569', start_date: '2026-10-01', end_date: '2026-10-31', status: 'active' }]),
-    createTabwaterPeriod: vi.fn().mockResolvedValue({ id: 13, org_id: 1, period_name: '11/2569', start_date: '2026-11-01', end_date: '2026-11-30', status: 'active' }),
-    fetchTabwaterInvoices: vi.fn(),
-    recordTabwaterReading: vi.fn(),
-    payTabwaterInvoice: vi.fn(),
-  }
-})
+import * as usersApi from '@/features/users/api/usersApi'
+import * as inventoryApi from '@/features/inventory/api/inventoryApi'
+import * as foodwasteApi from '@/features/foodwaste/api/foodwasteApi'
+import * as recycleApi from '@/features/recycle-bank/api/recycleApi'
+import * as tabwaterApi from '@/features/tabwater/api/tabwaterApi'
+import * as residentApi from '@/features/resident/api/residentApi'
+
+vi.mock('@/features/users/api/usersApi', () => ({
+  fetchUsers: vi.fn(),
+  createUser: vi.fn().mockResolvedValue({
+    id: 999,
+    org_id: 1,
+    username: 'user99',
+    prefix: 'คุณ',
+    firstname: 'ทดสอบ',
+    lastname: '',
+    email: '',
+    phone: '',
+    address: '',
+    zone_id: 1,
+    subzone_id: 1,
+    line_user_id: '',
+    status: 'active',
+  }),
+  fetchZones: vi.fn(),
+  createZone: vi.fn().mockResolvedValue({ id: 99, org_id: 1, zone_name: 'หมู่ 99', status: 'active', subzones: [] }),
+  linkUserLineAccount: vi.fn(),
+}))
+
+vi.mock('@/features/inventory/api/inventoryApi', () => ({
+  fetchInventoryItems: vi.fn(),
+  createInventoryItem: vi.fn(),
+  fetchInventoryTransactions: vi.fn(),
+  createInventoryTransaction: vi.fn(),
+  decideInventoryTransaction: vi.fn(),
+}))
+
+vi.mock('@/features/foodwaste/api/foodwasteApi', () => ({
+  fetchFoodWasteSummary: vi.fn(),
+  createCompostBatch: vi.fn(),
+  createWasteLog: vi.fn(),
+}))
+
+vi.mock('@/features/recycle-bank/api/recycleApi', () => ({
+  fetchRecycleItems: vi.fn(),
+  setRecycleItemPrice: vi.fn().mockResolvedValue({
+    id: 1,
+    org_id: 1,
+    code: 'KP-PET-01',
+    name: 'PET',
+    group_id: 1,
+    group_name: 'พลาสติก',
+    status: 'active',
+    price_from_dealer: 12,
+    price_for_member: 9.5,
+    point: 10,
+  }),
+  fetchRecycleAccounts: vi.fn().mockResolvedValue([]),
+  withdrawRecycleBalance: vi.fn().mockResolvedValue({
+    id: 1,
+    org_id: 1,
+    user_id: 1,
+    account_no: 'ACC-01',
+    balance: 150,
+    points: 100,
+    status: 'active',
+  }),
+  fetchRecycleSubmodules: vi.fn().mockResolvedValue({
+    kiosks: [{ id: 1, org_id: 1, name: 'Kiosk-HSG1', status: 'active', total_waste_count: 42 }],
+    welfare_configs: [
+      { id: 1, org_id: 1, min_months_active: 6, min_total_weight: 50, default_payout_amount: 5000, criteria_description: '' },
+    ],
+    welfare_payouts: [],
+    annual_trash_subscriptions: [],
+  }),
+  recordRecyclePurchase: vi.fn(),
+}))
+
+vi.mock('@/features/tabwater/api/tabwaterApi', () => ({
+  fetchTabwaterMeters: vi.fn(),
+  createTabwaterMeter: vi.fn().mockResolvedValue({
+    meter_id: 99,
+    org_id: 1,
+    user_id: 1,
+    meternumber: 'TW-99',
+    submeter_name: 'ทดสอบ',
+    meter_address: '99 หมู่ 1',
+    undertake_zone_id: 1,
+    undertake_subzone_id: 1,
+    status: 'active',
+    last_meter_recording: 0,
+  }),
+  fetchTabwaterPeriods: vi.fn().mockResolvedValue([
+    { id: 12, org_id: 1, period_name: '10/2569', start_date: '2026-10-01', end_date: '2026-10-31', status: 'active' },
+  ]),
+  createTabwaterPeriod: vi.fn().mockResolvedValue({
+    id: 13,
+    org_id: 1,
+    period_name: '11/2569',
+    start_date: '2026-11-01',
+    end_date: '2026-11-30',
+    status: 'active',
+  }),
+  fetchTabwaterInvoices: vi.fn(),
+  recordTabwaterReading: vi.fn(),
+  payTabwaterInvoice: vi.fn(),
+}))
+
+vi.mock('@/features/resident/api/residentApi', () => ({
+  fetchResidentOverview: vi.fn(),
+}))
 
 function renderWithQC(ui: React.ReactElement) {
   const qc = new QueryClient({
@@ -64,7 +134,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 1.5 UsersPage renders users and zones', async () => {
-    vi.mocked(modApi.fetchUsers).mockResolvedValue([
+    vi.mocked(usersApi.fetchUsers).mockResolvedValue([
       {
         id: 101,
         org_id: 1,
@@ -81,7 +151,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
         status: 'active',
       },
     ])
-    vi.mocked(modApi.fetchZones).mockResolvedValue([
+    vi.mocked(usersApi.fetchZones).mockResolvedValue([
       { id: 1, org_id: 1, zone_name: 'หมู่ที่ 1 บ้านห้องแซง', status: 'active', subzones: [] },
     ])
 
@@ -93,7 +163,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 2 InventoryPage renders items and approval transactions', async () => {
-    vi.mocked(modApi.fetchInventoryItems).mockResolvedValue([
+    vi.mocked(inventoryApi.fetchInventoryItems).mockResolvedValue([
       {
         id: 1,
         org_id: 1,
@@ -108,7 +178,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
         return_required: false,
       },
     ])
-    vi.mocked(modApi.fetchInventoryTransactions).mockResolvedValue([
+    vi.mocked(inventoryApi.fetchInventoryTransactions).mockResolvedValue([
       {
         id: 10,
         org_id: 1,
@@ -129,7 +199,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 3 FoodWastePage renders carbon saved KPIs and compost batches', async () => {
-    vi.mocked(modApi.fetchFoodWasteSummary).mockResolvedValue({
+    vi.mocked(foodwasteApi.fetchFoodWasteSummary).mockResolvedValue({
       total_batches: 23,
       total_waste_logs: 23,
       total_weight_kg: 120.5,
@@ -144,7 +214,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 4 RecycleBankPage renders recyclable items and prices', async () => {
-    vi.mocked(modApi.fetchRecycleItems).mockResolvedValue([
+    vi.mocked(recycleApi.fetchRecycleItems).mockResolvedValue([
       {
         id: 1,
         org_id: 1,
@@ -156,6 +226,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
         price_from_dealer: 10.0,
         price_for_member: 8.5,
         point: 15,
+        unit_name: 'กก.',
       },
     ])
 
@@ -166,7 +237,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 5 TabwaterPage renders water meters and invoices', async () => {
-    vi.mocked(modApi.fetchTabwaterMeters).mockResolvedValue([
+    vi.mocked(tabwaterApi.fetchTabwaterMeters).mockResolvedValue([
       {
         meter_id: 1,
         org_id: 1,
@@ -177,12 +248,10 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
         undertake_zone_id: 1,
         undertake_subzone_id: 1,
         status: 'active',
-        owe_count: 0,
-        cutmeter: '0',
         last_meter_recording: 145,
       },
     ])
-    vi.mocked(modApi.fetchTabwaterInvoices).mockResolvedValue([
+    vi.mocked(tabwaterApi.fetchTabwaterInvoices).mockResolvedValue([
       {
         id: 501,
         inv_no: 'INV-6901-001',
@@ -220,7 +289,7 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
   })
 
   it('Wave 1.5 ResidentPage renders resident water meters, invoices, and bank accounts', async () => {
-    vi.mocked(modApi.fetchResidentOverview).mockResolvedValue({
+    vi.mocked(residentApi.fetchResidentOverview).mockResolvedValue({
       username: 'user1',
       org_id: 1,
       water_meters: [
@@ -234,8 +303,6 @@ describe('ModulesPages (Unit Tests for Waves 1.5 to 5)', () => {
           undertake_zone_id: 1,
           undertake_subzone_id: 1,
           status: 'active',
-          owe_count: 0,
-          cutmeter: '0',
           last_meter_recording: 12,
         },
       ],

@@ -171,11 +171,134 @@ export function HomePage() {
 
   // ==========================================================================
   // Authenticated View: otp2025/resources/views/accessmenu.blade.php
-  // Radial Bubble Hub in a Clean, Airy White Theme
+  // Modern Minimal Dashboard Hub + 1-Click Action Bar + Role-Filtered Grid
   // ==========================================================================
   if (isAuthenticated) {
     return (
       <section className="space-y-6">
+        {/* Modern Minimal Greeting & 1-Click Action Bar (Low Friction) */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-0.5 text-xs font-bold text-sky-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span>HSG1:PIOS • องค์การบริหารส่วนตำบลห้องแซง</span>
+              </div>
+              <h2 className="mt-2 text-xl font-extrabold text-slate-900 tracking-tight sm:text-2xl">
+                สวัสดี, {user?.username} 👋
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                สิทธิ์การใช้งาน:{' '}
+                <span className="font-semibold text-slate-800">{userRoles.join(', ') || 'user'}</span> •
+                เข้าถึงระบบงานได้รวดเร็วใน 1 คลิก
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-sky-50 hover:text-sky-700 transition-all"
+                to="/me"
+              >
+                👤 My profile
+              </Link>
+              <Link
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-sky-50 hover:text-sky-700 transition-all"
+                to="/resident"
+              >
+                🏠 Resident Portal
+              </Link>
+              <Can roles={['admin', 'super_admin']}>
+                <Link
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-all"
+                  to="/organizations"
+                >
+                  🏛️ Organizations
+                </Link>
+              </Can>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-all"
+              >
+                ออกจากระบบ
+              </button>
+            </div>
+          </div>
+
+          {/* 1-Click Quick Action Shortcuts (ตามบทบาทเพื่อลดขั้นตอนทำงาน) */}
+          <div className="mt-4">
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              ⚡ ภารกิจด่วน 1-Click Shortcuts (ใช้งานบ่อย)
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
+              <Can roles={['admin', 'super_admin', 'tabwater_staff', 'finance_staff']}>
+                <Link
+                  to="/tabwater?section=reading"
+                  className="flex flex-col rounded-2xl border border-sky-100 bg-sky-50/60 p-3 text-left transition-all hover:border-sky-300 hover:bg-sky-50 hover:shadow-2xs"
+                >
+                  <span className="text-xl mb-1">💧</span>
+                  <span className="text-xs font-bold text-slate-900">จดมิเตอร์น้ำ</span>
+                  <span className="text-[10px] text-slate-500">บันทึกเลขอ่านเร็ว</span>
+                </Link>
+              </Can>
+
+              <Can roles={['admin', 'super_admin', 'tabwater_staff', 'finance_staff']}>
+                <Link
+                  to="/tabwater?section=invoices"
+                  className="flex flex-col rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-left transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-2xs"
+                >
+                  <span className="text-xl mb-1">🧾</span>
+                  <span className="text-xs font-bold text-slate-900">รับชำระค่าน้ำ</span>
+                  <span className="text-[10px] text-slate-500">ออกบิล & ใบเสร็จ</span>
+                </Link>
+              </Can>
+
+              <Can roles={['admin', 'super_admin', 'recycle_bank_staff', 'finance_staff']}>
+                <Link
+                  to="/recycle?section=purchase"
+                  className="flex flex-col rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 text-left transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-2xs"
+                >
+                  <span className="text-xl mb-1">♻️</span>
+                  <span className="text-xs font-bold text-slate-900">รับซื้อขยะรีไซเคิล</span>
+                  <span className="text-[10px] text-slate-500">ชั่งน้ำหนัก & เข้าบัญชี</span>
+                </Link>
+              </Can>
+
+              <Can roles={['admin', 'super_admin', 'foodwaste_staff']}>
+                <Link
+                  to="/foodwaste?section=log"
+                  className="flex flex-col rounded-2xl border border-lime-100 bg-lime-50/60 p-3 text-left transition-all hover:border-lime-300 hover:bg-lime-50 hover:shadow-2xs"
+                >
+                  <span className="text-xl mb-1">🌱</span>
+                  <span className="text-xs font-bold text-slate-900">บันทึกขยะเปียก</span>
+                  <span className="text-[10px] text-slate-500">ถังหมักรักษ์โลก</span>
+                </Link>
+              </Can>
+
+              <Can roles={['admin', 'super_admin', 'finance_staff']}>
+                <Link
+                  to="/inventory?section=approvals"
+                  className="flex flex-col rounded-2xl border border-amber-100 bg-amber-50/60 p-3 text-left transition-all hover:border-amber-300 hover:bg-amber-50 hover:shadow-2xs"
+                >
+                  <span className="text-xl mb-1">📦</span>
+                  <span className="text-xs font-bold text-slate-900">คิวอนุมัติพัสดุ</span>
+                  <span className="text-[10px] text-slate-500">เบิกจ่ายสารเคมี/ท่อ</span>
+                </Link>
+              </Can>
+
+              <Link
+                to="/resident"
+                className="flex flex-col rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-2xs"
+              >
+                <span className="text-xl mb-1">🏠</span>
+                <span className="text-xs font-bold text-slate-900">พอร์ทัลลูกบ้าน</span>
+                <span className="text-[10px] text-slate-500">สมุดเงินฝากดิจิทัล</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Existing Radial Bubble Stage (Desktop Radial / Mobile Responsive Grid) */}
         <div className="accessmenu-stage p-6 sm:p-8 lg:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-12">
             {/* Left Organization Info Panel (matches accessmenu.blade.php col-md-4) */}
@@ -226,45 +349,6 @@ export function HomePage() {
                 <p className="mt-3 text-xs leading-relaxed text-slate-500">
                   เลือกเมนูระบบงานจากวงล้อด้านขวา ระบบจะเปิดใช้งานเฉพาะโมดูลที่ตรงกับสิทธิ์ (Role) ของคุณโดยอัตโนมัติ
                 </p>
-
-                {/* Quick Action Links (Also satisfies E2E Journey 2 & 3) */}
-                <ul className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3.5">
-                  <li>
-                    <Link
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-sky-50 hover:text-sky-700"
-                      to="/me"
-                    >
-                      👤 My profile
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-sky-50 hover:text-sky-700"
-                      to="/resident"
-                    >
-                      🏠 Resident Portal
-                    </Link>
-                  </li>
-                  <Can roles={['admin', 'super_admin']}>
-                    <li>
-                      <Link
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
-                        to="/organizations"
-                      >
-                        🏛️ Organizations
-                      </Link>
-                    </li>
-                  </Can>
-                  <li className="ml-auto">
-                    <button
-                      type="button"
-                      onClick={() => void logout()}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                    >
-                      ออกจากระบบ
-                    </button>
-                  </li>
-                </ul>
               </div>
             </div>
 

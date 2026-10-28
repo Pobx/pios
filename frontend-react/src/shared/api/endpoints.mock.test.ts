@@ -3,17 +3,11 @@ import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from '
 import { api, configureApiAuth } from './client'
 import { fetchMe } from '@/features/me/api'
 import { fetchOrganizations } from '@/features/organizations/api'
-import {
-  fetchUsers,
-  fetchZones,
-  linkUserLineAccount,
-  fetchInventoryItems,
-  fetchInventoryTransactions,
-  fetchFoodWasteSummary,
-  fetchRecycleItems,
-  fetchTabwaterMeters,
-  fetchTabwaterInvoices,
-} from '@/features/modules/api'
+import { fetchUsers, fetchZones, linkUserLineAccount } from '@/features/users'
+import { fetchInventoryItems, fetchInventoryTransactions } from '@/features/inventory'
+import { fetchFoodWasteSummary } from '@/features/foodwaste'
+import { fetchRecycleItems } from '@/features/recycle-bank'
+import { fetchTabwaterMeters, fetchTabwaterInvoices } from '@/features/tabwater'
 
 describe('Frontend API Layer with Mock Adapter (API Mock Tests)', () => {
   const seenRequests: InternalAxiosRequestConfig[] = []

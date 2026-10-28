@@ -544,9 +544,73 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 pb-20 md:pb-6">
           <Outlet />
         </main>
+
+        {/* Mobile Sticky Bottom Navigation Bar (Thumb-Friendly Low Friction) */}
+        <aside
+          aria-label="Mobile Bottom Navigation"
+          className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200/90 bg-white/95 px-3 py-2 backdrop-blur-md shadow-lg md:hidden"
+        >
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
+                isActive ? 'text-sky-600' : 'text-slate-500 hover:text-slate-900'
+              }`
+            }
+          >
+            <span className="text-base">🏠</span>
+            <span>หน้าหลัก</span>
+          </NavLink>
+          {isAuthenticated && (
+            <NavLink
+              to="/resident"
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
+                  isActive ? 'text-sky-600' : 'text-slate-500 hover:text-slate-900'
+                }`
+              }
+            >
+              <span className="text-base">📑</span>
+              <span>ลูกบ้าน</span>
+            </NavLink>
+          )}
+          {isAuthenticated && (
+            <NavLink
+              to="/me"
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
+                  isActive ? 'text-sky-600' : 'text-slate-500 hover:text-slate-900'
+                }`
+              }
+            >
+              <span className="text-base">👤</span>
+              <span>บัญชีฉัน</span>
+            </NavLink>
+          )}
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex flex-col items-center gap-0.5 text-[11px] font-bold text-rose-500 hover:text-rose-700"
+            >
+              <span className="text-base">🚪</span>
+              <span>ออกระบบ</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void login('/')}
+              className="flex flex-col items-center gap-0.5 text-[11px] font-bold text-sky-600 hover:text-sky-700"
+            >
+              <span className="text-base">🔑</span>
+              <span>เข้าสู่ระบบ</span>
+            </button>
+          )}
+        </aside>
 
         <footer className="mt-8 border-t border-slate-200/80 bg-white py-3.5 text-xs text-slate-500">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 sm:px-6">

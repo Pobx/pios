@@ -2,14 +2,12 @@ import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, RequireRole } from '@/features/auth/ProtectedRoute'
 import { MePage } from '@/features/me/MePage'
 import { OrganizationsPage } from '@/features/organizations/OrganizationsPage'
-import {
-  ResidentPage,
-  UsersPage,
-  InventoryPage,
-  FoodWastePage,
-  RecycleBankPage,
-  TabwaterPage,
-} from '@/features/modules/ModulesPages'
+import { ResidentPage } from '@/features/resident'
+import { UsersPage } from '@/features/users'
+import { InventoryPage } from '@/features/inventory'
+import { FoodWastePage } from '@/features/foodwaste'
+import { RecycleBankPage } from '@/features/recycle-bank'
+import { TabwaterPage } from '@/features/tabwater'
 import { Layout } from './Layout'
 import { ForbiddenPage, HomePage, NotFoundPage } from './pages'
 
